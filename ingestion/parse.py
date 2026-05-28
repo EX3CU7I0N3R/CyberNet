@@ -7,6 +7,8 @@ from typing import Any, Dict, Optional
 import pyshark
 from pydantic import BaseModel, Field
 
+from ingestion.protocol_enrichment import enrich_application_protocol
+
 
 class IPClassification:
     RESERVED_RANGES = {
@@ -211,6 +213,12 @@ class CanonicalEvent(BaseModel):
     total_bytes: int
     application_protocol: str
     app_confidence: float
+    protocol_enrichment: str = "none"
+    protocol_evidence: list[str] = Field(default_factory=list)
+    tls_sni: Optional[str] = None
+    tls_alpn: Optional[str] = None
+    http_host: Optional[str] = None
+    dns_query: Optional[str] = None
     direction: str
     flow_id: str
 
@@ -278,6 +286,10 @@ def _extract_ip_event(packet, timestamp: str, total_bytes: int) -> Optional[Cano
     app_protocol, app_confidence = ProtocolInference.infer_application(
         packet, transport_layer, src_port, dst_port
     )
+    enrichment = enrich_application_protocol(packet, transport_layer, src_port, dst_port)
+    if enrichment["application_protocol"] != "unknown" or app_protocol == "unknown":
+        app_protocol = enrichment["application_protocol"]
+        app_confidence = enrichment["app_confidence"]
 
     return CanonicalEvent(
         packet_index=0,
@@ -295,6 +307,12 @@ def _extract_ip_event(packet, timestamp: str, total_bytes: int) -> Optional[Cano
         total_bytes=total_bytes,
         application_protocol=app_protocol,
         app_confidence=app_confidence,
+        protocol_enrichment=enrichment["protocol_enrichment"],
+        protocol_evidence=enrichment["protocol_evidence"],
+        tls_sni=enrichment["tls_sni"],
+        tls_alpn=enrichment["tls_alpn"],
+        http_host=enrichment["http_host"],
+        dns_query=enrichment["dns_query"],
         direction=classify_direction(src_ip, dst_ip),
         flow_id=generate_flow_id(src_ip, dst_ip, src_port or 0, dst_port or 0, transport_layer),
     )
@@ -321,6 +339,8 @@ def _extract_arp_event(packet, timestamp: str, total_bytes: int) -> Optional[Can
         total_bytes=total_bytes,
         application_protocol="arp",
         app_confidence=0.95,
+        protocol_enrichment="transport_inference",
+        protocol_evidence=["transport:arp"],
         direction=classify_direction(src_ip, dst_ip),
         flow_id=generate_flow_id(src_ip, dst_ip, 0, 0, "arp"),
     )

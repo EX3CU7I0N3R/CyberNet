@@ -195,14 +195,15 @@ class HeuristicsModule:
         protocol_quality = min(max(app_confidence, 0.2), 0.95)
         sufficiency_quality = min(packet_count / 100, 1.0)
 
+        encrypted_visibility_decay = 0.88 if app_confidence >= 0.85 else 1.0
         confidence = (
             sample_quality * 0.30
             + duration_quality * 0.20
             + variance_quality * 0.20
             + protocol_quality * 0.15
             + sufficiency_quality * 0.15
-        )
-        return round(min(confidence, 0.92), 4)
+        ) * encrypted_visibility_decay
+        return round(min(confidence, 0.82), 4)
 
     @staticmethod
     def compute_behavioral_risk(flow, timing: Dict, beacon_score: Optional[float], rarity_context: Dict) -> tuple[float, List[str], Dict[str, float]]:
@@ -219,7 +220,7 @@ class HeuristicsModule:
 
         destination_flow_count = rarity_context["destination_counts"].get(flow.responder_ip, 0)
         if flow.direction in {"outbound", "external"} and destination_flow_count <= 2:
-            indicators["rare_destination_observed"] = 12
+            indicators["low_frequency_destination"] = 12
 
         protocol_flow_count = rarity_context["protocol_counts"].get(flow.application_protocol, 0)
         if flow.application_protocol in {"unknown", "irc"} or protocol_flow_count <= 2:

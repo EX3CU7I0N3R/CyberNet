@@ -7,6 +7,7 @@ from aggregation.flow_builder import build_flows, flows_to_dataframe
 from aggregation.flow_metrics import compute_flow_metrics
 from behavior.baselines import build_baseline_snapshot
 from behavior.host_aggregator import build_host_profiles
+from behavior.relationships import build_relationships
 from ingestion.parse import events_to_ndjson, extract_packet_info, parse_pcap
 
 
@@ -96,10 +97,12 @@ def main():
 
     print("[*] STEP 5: Building host behavior profiles...")
     host_profiles = build_host_profiles(enriched_flows)
+    relationships = build_relationships(enriched_flows)
     elevated_hosts = [profile for profile in host_profiles if profile.risk_score >= 35]
     baseline_snapshot = build_baseline_snapshot(host_profiles)
 
     print(f"    [OK] Built {len(host_profiles):,} host profiles")
+    print(f"    [OK] Built {len(relationships):,} host relationships")
     print(f"    [OK] Hosts with elevated behavioral risk: {len(elevated_hosts):,}\n")
 
     print("[*] STEP 6: Analysis summary\n")
@@ -123,6 +126,10 @@ def main():
             "host_profiles.csv",
             index=False,
         )
+        pd.DataFrame([relationship.model_dump() for relationship in relationships]).to_csv(
+            "relationships.csv",
+            index=False,
+        )
         print("    [OK] Wrote CSV artifacts")
 
     if not args.no_ndjson:
@@ -130,6 +137,7 @@ def main():
         events_to_ndjson(list(directional_flows.values()), "flows.ndjson")
         events_to_ndjson(enriched_flows, "enriched_flows.ndjson")
         events_to_ndjson(host_profiles, "host_profiles.ndjson")
+        events_to_ndjson(relationships, "relationships.ndjson")
         events_to_ndjson([baseline_snapshot], "host_baseline_snapshot.ndjson")
         print("    [OK] Wrote NDJSON artifacts")
 
@@ -202,6 +210,7 @@ def _print_host_summary(elevated_hosts):
     print(f"\n    Elevated Host Profiles: {len(elevated_hosts):,}")
     for profile in sorted(elevated_hosts, key=lambda item: item.risk_score, reverse=True)[:5]:
         print(f"\n    Host: {profile.ip_address}")
+        print(f"    Inferred Role: {profile.inferred_role} ({profile.role_confidence:.1%})")
         print(f"    Risk Score: {profile.risk_score:.1f}")
         print(f"    Confidence: {profile.confidence:.1%}")
         print("\n    Indicators:")
@@ -211,8 +220,10 @@ def _print_host_summary(elevated_hosts):
         else:
             print("      - no_elevated_behavioral_indicators")
         print("\n    Connections:")
-        print(f"      - External: {profile.external_connections}")
-        print(f"      - Internal: {profile.internal_connections}")
+        print(f"      - External unique hosts: {profile.external_unique_hosts}")
+        print(f"      - External flows: {profile.external_flow_count}")
+        print(f"      - Internal unique hosts: {profile.internal_unique_hosts}")
+        print(f"      - Internal flows: {profile.internal_flow_count}")
         print("\n    Protocols:")
         for protocol in profile.protocols:
             print(f"      - {protocol}")

@@ -5,6 +5,7 @@ from typing import Dict, Iterable, List
 from behavior.baselines import normalize_host_state
 from behavior.host_metrics import compute_host_metrics
 from behavior.host_risk import score_host_behavior
+from behavior.roles import infer_host_role
 from behavior.schemas import HostGraphNode, HostProfile
 
 
@@ -22,11 +23,19 @@ def build_host_profiles(enriched_flows: Iterable) -> List[HostProfile]:
     profiles = []
     for host_ip, state in sorted(host_states.items()):
         metrics = compute_host_metrics(host_ip, state)
-        risk_score, confidence, indicators, indicator_details, severity = score_host_behavior(metrics, state)
+        inferred_role, role_confidence, role_evidence = infer_host_role(metrics, state)
+        risk_score, confidence, indicators, indicator_details, severity = score_host_behavior(
+            metrics,
+            state,
+            inferred_role,
+        )
         graph_node = _build_graph_node(host_ip, metrics, risk_score, confidence, severity)
         profile = HostProfile(
             ip_address=host_ip,
             **metrics,
+            inferred_role=inferred_role,
+            role_confidence=role_confidence,
+            role_evidence=role_evidence,
             risk_score=risk_score,
             confidence=confidence,
             severity=severity,
@@ -55,6 +64,7 @@ def _apply_self_flow(host_states: Dict[str, Dict], flow):
     state["peer_flows"][flow.responder_ip].append(flow)
     if flow.responder_port is not None:
         state["ports"].add(flow.responder_port)
+        state["service_ports"].add(flow.responder_port)
     _count_host_direction(state, flow.direction)
     _update_temporal_state(state, flow)
 
@@ -72,10 +82,12 @@ def _apply_flow_role(host_states: Dict[str, Dict], host_ip: str, flow, role: str
         state["destinations"].add(flow.responder_ip)
         if flow.responder_port is not None:
             state["ports"].add(flow.responder_port)
+            state["remote_ports"].add(flow.responder_port)
         _count_host_direction(state, flow.direction)
     else:
-        if flow.initiator_port is not None:
-            state["ports"].add(flow.initiator_port)
+        if flow.responder_port is not None:
+            state["ports"].add(flow.responder_port)
+            state["service_ports"].add(flow.responder_port)
         _count_host_direction(state, _responder_direction(flow.direction))
 
     _update_temporal_state(state, flow)
@@ -89,6 +101,8 @@ def _new_host_state() -> Dict:
         "destinations": set(),
         "peers": set(),
         "ports": set(),
+        "service_ports": set(),
+        "remote_ports": set(),
         "protocols": set(),
         "transports": set(),
         "peer_flows": defaultdict(list),
@@ -152,7 +166,8 @@ def _build_graph_node(host_ip: str, metrics: Dict, risk_score: float, confidence
         last_seen=metrics["last_seen"],
         metadata={
             "flow_count": metrics["flow_count"],
-            "external_connections": metrics["external_connections"],
+            "external_flow_count": metrics["external_flow_count"],
+            "external_unique_hosts": metrics["external_unique_hosts"],
             "suspicious_flow_count": metrics["suspicious_flow_count"],
             "graph_importance": metrics["graph_importance"],
         },

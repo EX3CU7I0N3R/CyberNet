@@ -10,6 +10,8 @@ class HostProfile(BaseModel):
     user_identity: Optional[str] = None
 
     flow_count: int = 0
+    external_flow_count: int = 0
+    internal_flow_count: int = 0
     initiated_flow_count: int = 0
     responded_flow_count: int = 0
     packet_count: int = 0
@@ -20,16 +22,26 @@ class HostProfile(BaseModel):
     average_flow_duration: float = 0.0
 
     external_connections: int = 0
+    external_unique_hosts: int = 0
+    external_unique_relationships: int = 0
     internal_connections: int = 0
+    internal_unique_hosts: int = 0
+    internal_unique_relationships: int = 0
     inbound_connections: int = 0
     outbound_connections: int = 0
     unique_destinations: int = 0
     unique_peers: int = 0
     unique_ports: int = 0
+    protocol_relationships: int = 0
+    persistent_relationships: int = 0
     protocols: List[str] = Field(default_factory=list)
     transports: List[str] = Field(default_factory=list)
     protocol_diversity: int = 0
     transport_diversity: int = 0
+    unknown_protocol_ratio: float = 0.0
+    encrypted_flow_ratio: float = 0.0
+    protocol_confidence_avg: float = 0.0
+    telemetry_completeness: float = 0.0
     outbound_ratio: float = 0.0
     inbound_ratio: float = 0.0
     internal_ratio: float = 0.0
@@ -50,8 +62,14 @@ class HostProfile(BaseModel):
     last_timeline_index: int = 0
     active_duration: float = 0.0
     activity_density: float = 0.0
+    session_density: float = 0.0
+    activity_cluster_count: int = 0
     active_time_buckets: List[str] = Field(default_factory=list)
     hourly_activity_distribution: Dict[str, int] = Field(default_factory=dict)
+
+    inferred_role: str = "unknown"
+    role_confidence: float = 0.0
+    role_evidence: List[str] = Field(default_factory=list)
 
     graph_weight: float = 0.0
     graph_degree: int = 0
@@ -93,4 +111,31 @@ class HostGraphNode(BaseModel):
     cluster_group: str
     first_seen: Optional[str] = None
     last_seen: Optional[str] = None
+    metadata: Dict = Field(default_factory=dict)
+
+
+class HostRelationship(BaseModel):
+    edge_id: str
+    source: str
+    target: str
+    relationship_risk: float = 0.0
+    confidence: float = 0.0
+    severity: str = "informational"
+    flows: int = 0
+    packet_count: int = 0
+    total_bytes: int = 0
+    protocols: List[str] = Field(default_factory=list)
+    transports: List[str] = Field(default_factory=list)
+    first_seen: Optional[str] = None
+    last_seen: Optional[str] = None
+    first_seen_sequence: int = 0
+    last_seen_sequence: int = 0
+    persistence: float = 0.0
+    temporal_buckets: List[str] = Field(default_factory=list)
+    protocol_diversity: int = 0
+    directionality: str = "directed"
+    relationship_indicators: List[str] = Field(default_factory=list)
+    graph_weight: float = 0.0
+    graph_edge_color: str = "#7aa6c2"
+    graph_edge_width: float = 1.0
     metadata: Dict = Field(default_factory=dict)
