@@ -6,6 +6,9 @@ import pandas as pd
 from aggregation.flow_builder import build_flows, flows_to_dataframe
 from aggregation.flow_metrics import compute_flow_metrics
 from behavior.baselines import build_baseline_snapshot
+from behavior.graph_builder import build_graph_edges, build_graph_nodes, compute_graph_hashes
+from behavior.graph_metrics import compute_graph_metrics
+from behavior.graph_state import build_graph_state, build_temporal_snapshots
 from behavior.host_aggregator import build_host_profiles
 from behavior.relationships import build_relationships
 from ingestion.parse import events_to_ndjson, extract_packet_info, parse_pcap
@@ -105,13 +108,28 @@ def main():
     print(f"    [OK] Built {len(relationships):,} host relationships")
     print(f"    [OK] Hosts with elevated behavioral risk: {len(elevated_hosts):,}\n")
 
-    print("[*] STEP 6: Analysis summary\n")
+    print("[*] STEP 6: Building graph state...")
+    graph_state = build_graph_state(host_profiles, relationships)
+    print(f"    [OK] Built graph with {graph_state.node_count:,} nodes and {graph_state.edge_count:,} edges")
+    print(f"    [OK] Graph density: {graph_state.graph_density:.6f}")
+    print(f"    [OK] Graph risk score: {graph_state.graph_risk_score:.1f}\n")
+
+    print("[*] STEP 7: Generating temporal snapshots...")
+    temporal_snapshots = build_temporal_snapshots(host_profiles, relationships, snapshot_interval_seconds=60)
+    print(f"    [OK] Generated {len(temporal_snapshots):,} temporal snapshots")
+    if temporal_snapshots:
+        print(f"    [OK] Snapshot time window: {temporal_snapshots[0].window_start} to {temporal_snapshots[-1].window_end}\n")
+    else:
+        print()
+
+    print("[*] STEP 8: Analysis summary\n")
     _print_direction_summary(enriched_flows)
     _print_protocol_summary(enriched_flows)
     _print_suspicious_flows(suspicious_flows)
     _print_host_summary(elevated_hosts)
+    _print_graph_summary(graph_state, temporal_snapshots)
 
-    print("[*] STEP 7: Exporting analysis artifacts...")
+    print("[*] STEP 9: Exporting analysis artifacts...")
     if not args.no_csv:
         pd.DataFrame([event.model_dump() for event in canonical_events]).to_csv(
             "normalized_packets.csv",
@@ -139,6 +157,10 @@ def main():
         events_to_ndjson(host_profiles, "host_profiles.ndjson")
         events_to_ndjson(relationships, "relationships.ndjson")
         events_to_ndjson([baseline_snapshot], "host_baseline_snapshot.ndjson")
+        events_to_ndjson(graph_state.nodes, "graph_nodes.ndjson")
+        events_to_ndjson(graph_state.edges, "graph_edges.ndjson")
+        events_to_ndjson(temporal_snapshots, "graph_snapshots.ndjson")
+        events_to_ndjson([graph_state], "graph_state.ndjson")
         print("    [OK] Wrote NDJSON artifacts")
 
     print()
@@ -227,6 +249,42 @@ def _print_host_summary(elevated_hosts):
         print("\n    Protocols:")
         for protocol in profile.protocols:
             print(f"      - {protocol}")
+
+
+def _print_graph_summary(graph_state, temporal_snapshots):
+    print("\n" + "=" * 80)
+    print("GRAPH STATE SUMMARY")
+    print("=" * 80)
+    
+    print(f"\n    Graph Nodes: {graph_state.node_count:,}")
+    print(f"    Graph Edges: {graph_state.edge_count:,}")
+    print(f"    Graph Density: {graph_state.graph_density:.6f}")
+    print(f"    Graph Risk Score: {graph_state.graph_risk_score:.1f}")
+    print(f"    Isolated Nodes: {graph_state.isolated_node_count:,}")
+    
+    if graph_state.high_centrality_nodes:
+        print("\n    High Centrality Nodes:")
+        for node_ip in graph_state.high_centrality_nodes:
+            print(f"      - {node_ip}")
+    
+    if graph_state.relationship_types:
+        print("\n    Relationship Types:")
+        for rel_type in graph_state.relationship_types:
+            print(f"      - {rel_type}")
+    
+    print(f"\n    Temporal Snapshots: {len(temporal_snapshots):,} generated")
+    
+    if graph_state.metadata:
+        print(f"    Average Node Degree: {graph_state.metadata.get('avg_node_degree', 0):.2f}")
+        print(f"    Suspicious Edges: {graph_state.metadata.get('suspicious_edges', 0):,}")
+        communities = graph_state.metadata.get('communities', {})
+        if communities:
+            print(f"    Network Communities: {len(communities):,} detected")
+    
+    print(f"\n    Replay Metadata:")
+    print(f"      - Deterministic replay ordering enabled")
+    print(f"      - Sequence start: {graph_state.replay_sequence_start}")
+    print(f"      - Sequence end: {graph_state.replay_sequence_end}")
 
 
 def _parse_timestamp(timestamp: str) -> datetime:
