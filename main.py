@@ -1,5 +1,6 @@
 import argparse
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pandas as pd
 
@@ -15,6 +16,9 @@ from ingestion.parse import events_to_ndjson, extract_packet_info, parse_pcap
 from layer5 import Layer5Phase1Engine, detect_host_deltas, detect_relationship_deltas
 from behavior.role_manager import role_to_display
 from stabilization_audit import write_stabilization_exports
+
+
+OUTPUT_DIR = Path("output")
 
 
 def main():
@@ -39,6 +43,7 @@ def main():
     )
 
     args = parser.parse_args()
+    OUTPUT_DIR.mkdir(exist_ok=True)
 
     print("\n" + "=" * 80)
     print("BEHAVIORAL NETWORK TELEMETRY ANALYSIS")
@@ -196,6 +201,7 @@ def main():
         hypotheses=hypotheses,
         investigation_candidates=investigation_candidates,
         temporal_snapshots=temporal_snapshots,
+        output_dir=str(OUTPUT_DIR),
     )
     print("    [OK] Wrote stabilization audit artifacts\n")
 
@@ -210,44 +216,48 @@ def main():
     print("[*] STEP 10: Exporting analysis artifacts...")
     if not args.no_csv:
         pd.DataFrame([event.model_dump() for event in canonical_events]).to_csv(
-            "normalized_packets.csv",
+            _artifact_path("normalized_packets.csv"),
             index=False,
         )
-        flows_to_dataframe(directional_flows).to_csv("flows.csv", index=False)
+        flows_to_dataframe(directional_flows).to_csv(_artifact_path("flows.csv"), index=False)
         pd.DataFrame([flow.model_dump() for flow in enriched_flows]).to_csv(
-            "enriched_flows.csv",
+            _artifact_path("enriched_flows.csv"),
             index=False,
         )
         pd.DataFrame([profile.model_dump() for profile in host_profiles]).to_csv(
-            "host_profiles.csv",
+            _artifact_path("host_profiles.csv"),
             index=False,
         )
         pd.DataFrame([relationship.model_dump() for relationship in relationships]).to_csv(
-            "relationships.csv",
+            _artifact_path("relationships.csv"),
             index=False,
         )
         print("    [OK] Wrote CSV artifacts")
 
     if not args.no_ndjson:
-        events_to_ndjson(canonical_events, "normalized_packets.ndjson")
-        events_to_ndjson(list(directional_flows.values()), "flows.ndjson")
-        events_to_ndjson(enriched_flows, "enriched_flows.ndjson")
-        events_to_ndjson(host_profiles, "host_profiles.ndjson")
-        events_to_ndjson(relationships, "relationships.ndjson")
-        events_to_ndjson([baseline_snapshot], "host_baseline_snapshot.ndjson")
-        layer5_engine.export_deltas(host_deltas + relationship_deltas, "layer5_deltas.ndjson")
-        layer5_engine.export_hypotheses(hypotheses, "layer5_hypotheses.ndjson")
-        events_to_ndjson(investigation_candidates, "layer5_investigation_candidates.ndjson")
-        events_to_ndjson(graph_state.nodes, "graph_nodes.ndjson")
-        events_to_ndjson(graph_state.edges, "graph_edges.ndjson")
-        events_to_ndjson(temporal_snapshots, "graph_snapshots.ndjson")
-        events_to_ndjson([graph_state], "graph_state.ndjson")
+        events_to_ndjson(canonical_events, _artifact_path("normalized_packets.ndjson"))
+        events_to_ndjson(list(directional_flows.values()), _artifact_path("flows.ndjson"))
+        events_to_ndjson(enriched_flows, _artifact_path("enriched_flows.ndjson"))
+        events_to_ndjson(host_profiles, _artifact_path("host_profiles.ndjson"))
+        events_to_ndjson(relationships, _artifact_path("relationships.ndjson"))
+        events_to_ndjson([baseline_snapshot], _artifact_path("host_baseline_snapshot.ndjson"))
+        layer5_engine.export_deltas(host_deltas + relationship_deltas, _artifact_path("layer5_deltas.ndjson"))
+        layer5_engine.export_hypotheses(hypotheses, _artifact_path("layer5_hypotheses.ndjson"))
+        events_to_ndjson(investigation_candidates, _artifact_path("layer5_investigation_candidates.ndjson"))
+        events_to_ndjson(graph_state.nodes, _artifact_path("graph_nodes.ndjson"))
+        events_to_ndjson(graph_state.edges, _artifact_path("graph_edges.ndjson"))
+        events_to_ndjson(temporal_snapshots, _artifact_path("graph_snapshots.ndjson"))
+        events_to_ndjson([graph_state], _artifact_path("graph_state.ndjson"))
         print("    [OK] Wrote NDJSON artifacts")
 
     print()
     print("=" * 80)
     print("ANALYSIS COMPLETE")
     print("=" * 80 + "\n")
+
+
+def _artifact_path(filename: str) -> str:
+    return str(OUTPUT_DIR / filename)
 
 
 def _print_priority_explanation(priority_explanation):

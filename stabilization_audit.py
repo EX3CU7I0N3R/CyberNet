@@ -17,7 +17,7 @@ def write_stabilization_exports(
     hypotheses: Iterable,
     investigation_candidates: Iterable,
     temporal_snapshots: Iterable,
-    output_dir: str = "exports",
+    output_dir: str = "output",
 ) -> dict:
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
