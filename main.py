@@ -12,6 +12,7 @@ from behavior.graph_state import build_graph_state, build_temporal_snapshots
 from behavior.host_aggregator import build_host_profiles
 from behavior.relationships import build_relationships
 from ingestion.parse import events_to_ndjson, extract_packet_info, parse_pcap
+from layer5 import Layer5Phase1Engine, detect_host_deltas, detect_relationship_deltas
 
 
 def main():
@@ -108,7 +109,32 @@ def main():
     print(f"    [OK] Built {len(relationships):,} host relationships")
     print(f"    [OK] Hosts with elevated behavioral risk: {len(elevated_hosts):,}\n")
 
-    print("[*] STEP 6: Building graph state...")
+    print("[*] STEP 6: Layer 5 delta detection and hypothesis generation...")
+    host_deltas = detect_host_deltas(host_profiles, [])
+    relationship_deltas = detect_relationship_deltas(relationships, [])
+    
+    host_profiles_by_ip = {profile.ip_address: profile for profile in host_profiles}
+    layer5_engine = Layer5Phase1Engine()
+    hypotheses = layer5_engine.evaluate(host_deltas, relationship_deltas, host_profiles_by_ip)
+
+    print(f"    [OK] Generated {len(host_deltas):,} Layer 5 host deltas")
+    print(f"    [OK] Generated {len(relationship_deltas):,} Layer 5 relationship deltas")
+    print(f"    [OK] Generated {len(hypotheses):,} Layer 5 hypotheses (after hardening)\n")
+
+    if hypotheses:
+        print("    TOP LAYER 5 HYPOTHESES:")
+        for idx, hypothesis in enumerate(hypotheses, 1):
+            print(f"\n    [{idx}] [{hypothesis.severity.upper()}] {hypothesis.hypothesis_type.upper()}")
+            if len(hypothesis.impacted_entities) == 2:
+                print(f"        {hypothesis.impacted_entities[0]} <-> {hypothesis.impacted_entities[1]}")
+            else:
+                print(f"        Hosts: {', '.join(hypothesis.impacted_entities)}")
+            print(f"        Confidence: {hypothesis.confidence:.1f}%")
+            print(f"        Evidence: {', '.join(hypothesis.supporting_evidence)}")
+            if hypothesis.confidence_explanation:
+                print(f"        Reasoning: {hypothesis.confidence_explanation}")
+
+    print("\n[*] STEP 7: Building graph state...")
     graph_state = build_graph_state(host_profiles, relationships)
     print(f"    [OK] Built graph with {graph_state.node_count:,} nodes and {graph_state.edge_count:,} edges")
     print(f"    [OK] Graph density: {graph_state.graph_density:.6f}")
@@ -157,6 +183,8 @@ def main():
         events_to_ndjson(host_profiles, "host_profiles.ndjson")
         events_to_ndjson(relationships, "relationships.ndjson")
         events_to_ndjson([baseline_snapshot], "host_baseline_snapshot.ndjson")
+        layer5_engine.export_deltas(host_deltas + relationship_deltas, "layer5_deltas.ndjson")
+        layer5_engine.export_hypotheses(hypotheses, "layer5_hypotheses.ndjson")
         events_to_ndjson(graph_state.nodes, "graph_nodes.ndjson")
         events_to_ndjson(graph_state.edges, "graph_edges.ndjson")
         events_to_ndjson(temporal_snapshots, "graph_snapshots.ndjson")
