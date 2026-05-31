@@ -69,6 +69,7 @@ def normalize_host_state(profile: HostProfile) -> Dict:
         "hourly_activity_distribution": profile.hourly_activity_distribution,
         "behavioral_indicators": profile.behavioral_indicators,
         "inferred_role": profile.inferred_role,
+        "role": profile.role,
         "role_confidence": profile.role_confidence,
         "graph_node": profile.graph_node,
     })

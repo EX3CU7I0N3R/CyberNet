@@ -5,7 +5,7 @@ from typing import Dict, Iterable, List
 from behavior.baselines import normalize_host_state
 from behavior.host_metrics import compute_host_metrics
 from behavior.host_risk import score_host_behavior
-from behavior.roles import infer_host_role
+from behavior.role_manager import infer_host_role
 from behavior.schemas import HostGraphNode, HostProfile
 
 
@@ -23,7 +23,10 @@ def build_host_profiles(enriched_flows: Iterable) -> List[HostProfile]:
     profiles = []
     for host_ip, state in sorted(host_states.items()):
         metrics = compute_host_metrics(host_ip, state)
-        inferred_role, role_confidence, role_evidence = infer_host_role(metrics, state)
+        role_result = infer_host_role(metrics, state, host_ip)
+        inferred_role = role_result["role"]
+        role_confidence = role_result["confidence"]
+        role_evidence = role_result["supporting_signals"]
         risk_score, confidence, indicators, indicator_details, severity = score_host_behavior(
             metrics,
             state,
@@ -34,6 +37,7 @@ def build_host_profiles(enriched_flows: Iterable) -> List[HostProfile]:
             ip_address=host_ip,
             **metrics,
             inferred_role=inferred_role,
+            role=inferred_role,
             role_confidence=role_confidence,
             role_evidence=role_evidence,
             risk_score=risk_score,

@@ -1,6 +1,8 @@
 from math import exp
 from typing import Dict, List
 
+from behavior.role_manager import DOMAIN_CONTROLLER, INFRASTRUCTURE, SERVER, WORKSTATION, normalize_role
+
 
 BEHAVIOR_ONLY_SOFT_CAP = 82.0
 MAX_CONFIDENCE = 0.78
@@ -12,6 +14,7 @@ def score_host_behavior(
     state: Dict,
     inferred_role: str = "unknown",
 ) -> tuple[float, float, List[str], Dict[str, float], str]:
+    inferred_role = normalize_role(inferred_role)
     positive_indicators = _positive_indicators(metrics, state, inferred_role)
     negative_pressure = _negative_pressure(metrics, inferred_role)
     pressure = max(sum(positive_indicators.values()) - negative_pressure, 0.0)
@@ -62,7 +65,7 @@ def _positive_indicators(metrics: Dict, state: Dict, inferred_role: str) -> Dict
     if concentration >= 0.70 and metrics["external_unique_hosts"]:
         indicators["concentrated_external_relationship"] = 8
 
-    if inferred_role == "workstation" and _external_smb_observed(state):
+    if inferred_role == WORKSTATION and _external_smb_observed(state):
         indicators["workstation_external_smb_exposure"] = 16
 
     return {key: round(value, 4) for key, value in indicators.items()}
@@ -70,7 +73,7 @@ def _positive_indicators(metrics: Dict, state: Dict, inferred_role: str) -> Dict
 
 def _bounded_risk(pressure: float, indicators: Dict[str, float], inferred_role: str) -> float:
     cap = BEHAVIOR_ONLY_SOFT_CAP
-    if inferred_role in {"infrastructure_device", "multicast_service_host"}:
+    if inferred_role == INFRASTRUCTURE:
         cap = 42.0
     if len(indicators) <= 1:
         cap = min(cap, 48.0)
@@ -91,9 +94,9 @@ def _negative_pressure(metrics: Dict, inferred_role: str) -> float:
 
     if infrastructure_only:
         reduction += 34
-    if inferred_role in {"domain_controller", "server"} and "smb" in metrics["protocols"]:
+    if inferred_role in {DOMAIN_CONTROLLER, SERVER} and "smb" in metrics["protocols"]:
         reduction += 8
-    if inferred_role in {"infrastructure_device", "multicast_service_host"}:
+    if inferred_role == INFRASTRUCTURE:
         reduction += 18
     if metrics["external_unique_hosts"] == 0 and metrics["suspicious_flow_count"] == 0:
         reduction += 14
@@ -152,7 +155,7 @@ def _has_unusual_protocol(metrics: Dict, inferred_role: str) -> bool:
         "netbios_session", "ntp", "pop", "pops", "rdp", "smb", "smtp", "smtp_submission",
         "smtps", "snmp", "snmptrap", "ssdp", "ssh",
     }
-    if inferred_role in {"server", "domain_controller"}:
+    if inferred_role in {SERVER, DOMAIN_CONTROLLER}:
         expected_protocols.update({"msrpc", "kerberos", "ldap", "ldaps", "smb"})
     return "unknown" in protocols or bool(protocols - expected_protocols)
 

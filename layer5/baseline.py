@@ -116,6 +116,7 @@ class BehavioralBaselineManager:
             "persistent_connection_ratio": profile.persistent_connection_ratio,
             "behavioral_indicators": profile.behavioral_indicators,
             "inferred_role": profile.inferred_role,
+            "role": getattr(profile, "role", profile.inferred_role),
         }
 
     @staticmethod

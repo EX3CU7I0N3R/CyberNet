@@ -24,7 +24,8 @@ def build_graph_nodes(host_profiles: List[HostProfile]) -> List[GraphNode]:
             node_id=_compute_node_id(profile.ip_address),
             ip_address=profile.ip_address,
             hostname=profile.hostname,
-            inferred_role=profile.inferred_role,
+            inferred_role=profile.role,
+            role=profile.role,
             
             # Behavior
             risk_score=profile.risk_score,

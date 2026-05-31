@@ -13,6 +13,8 @@ from behavior.host_aggregator import build_host_profiles
 from behavior.relationships import build_relationships
 from ingestion.parse import events_to_ndjson, extract_packet_info, parse_pcap
 from layer5 import Layer5Phase1Engine, detect_host_deltas, detect_relationship_deltas
+from behavior.role_manager import role_to_display
+from stabilization_audit import write_stabilization_exports
 
 
 def main():
@@ -116,23 +118,62 @@ def main():
     host_profiles_by_ip = {profile.ip_address: profile for profile in host_profiles}
     layer5_engine = Layer5Phase1Engine()
     hypotheses = layer5_engine.evaluate(host_deltas, relationship_deltas, host_profiles_by_ip)
+    investigation_candidates = layer5_engine.build_investigation_candidates(hypotheses, host_profiles_by_ip)
 
     print(f"    [OK] Generated {len(host_deltas):,} Layer 5 host deltas")
     print(f"    [OK] Generated {len(relationship_deltas):,} Layer 5 relationship deltas")
     print(f"    [OK] Generated {len(hypotheses):,} Layer 5 hypotheses (after hardening)\n")
+    print(f"    [OK] Generated {len(investigation_candidates):,} investigation candidates\n")
 
-    if hypotheses:
-        print("    TOP LAYER 5 HYPOTHESES:")
-        for idx, hypothesis in enumerate(hypotheses, 1):
-            print(f"\n    [{idx}] [{hypothesis.severity.upper()}] {hypothesis.hypothesis_type.upper()}")
-            if len(hypothesis.impacted_entities) == 2:
-                print(f"        {hypothesis.impacted_entities[0]} <-> {hypothesis.impacted_entities[1]}")
-            else:
-                print(f"        Hosts: {', '.join(hypothesis.impacted_entities)}")
-            print(f"        Confidence: {hypothesis.confidence:.1f}%")
-            print(f"        Evidence: {', '.join(hypothesis.supporting_evidence)}")
-            if hypothesis.confidence_explanation:
-                print(f"        Reasoning: {hypothesis.confidence_explanation}")
+    if investigation_candidates:
+        print("=" * 80)
+        print("INVESTIGATION CANDIDATES")
+        print("=" * 80)
+        for idx, candidate in enumerate(investigation_candidates, 1):
+            host_summary = candidate.host_summary
+            print(f"\n    #{idx}")
+            print(f"    Host: {candidate.host}")
+            print(f"    Role: {host_summary.get('host_role', 'unknown').title()}")
+            print(f"    Role Confidence: {host_summary.get('role_confidence', 0.0):.0%}")
+            print(f"    Risk: {candidate.risk:.1f}")
+            print(f"    Priority Score: {candidate.priority_score:.1f}")
+            print(f"    Priority: {candidate.priority}")
+            print(f"    Confidence: {candidate.confidence:.1f}%")
+            print(f"    Asset Criticality: {candidate.asset_criticality_score:.1f}")
+            _print_priority_explanation(candidate.priority_explanation)
+            print("\n    Host Summary:")
+            print(f"      - External Relationships: {host_summary.get('external_relationships', 0)}")
+            print(f"      - Internal Relationships: {host_summary.get('internal_relationships', 0)}")
+            protocols = host_summary.get("top_protocols", [])
+            print(f"      - Top Protocols: {', '.join(protocols) if protocols else 'unknown'}")
+
+            for tier in ("PRIMARY", "SECONDARY", "SUPPORTING"):
+                tier_findings = [finding for finding in candidate.findings if finding.finding_tier == tier]
+                if not tier_findings:
+                    continue
+                print(f"\n    {tier} FINDINGS:")
+                for finding in tier_findings:
+                    destination = finding.metadata.get("relationship_destination")
+                    finding_label = f"{finding.title} ({finding.confidence:.1f}%)"
+                    if destination:
+                        finding_label = f"{finding_label} -> {destination}"
+                    print(f"      - {finding_label}")
+                    print("        Supporting:")
+                    for evidence in finding.supporting_evidence:
+                        print(f"          - {evidence}")
+                    print("        Contradictory:")
+                    if finding.contradictory_evidence:
+                        for evidence in finding.contradictory_evidence:
+                            print(f"          - {evidence}")
+                    else:
+                        print("          - none")
+
+            print("\n    Priority Reason:")
+            print(f"      {candidate.candidate_rationale}")
+
+            print("\n    Recommended Actions:")
+            for action in candidate.recommended_actions:
+                print(f"      - {action}")
 
     print("\n[*] STEP 7: Building graph state...")
     graph_state = build_graph_state(host_profiles, relationships)
@@ -148,14 +189,25 @@ def main():
     else:
         print()
 
-    print("[*] STEP 8: Analysis summary\n")
+    print("[*] STEP 8: Running Layer 4/5 stabilization audits...")
+    stabilization_report = write_stabilization_exports(
+        host_profiles=host_profiles,
+        graph_state=graph_state,
+        hypotheses=hypotheses,
+        investigation_candidates=investigation_candidates,
+        temporal_snapshots=temporal_snapshots,
+    )
+    print("    [OK] Wrote stabilization audit artifacts\n")
+
+    print("[*] STEP 9: Analysis summary\n")
     _print_direction_summary(enriched_flows)
     _print_protocol_summary(enriched_flows)
     _print_suspicious_flows(suspicious_flows)
     _print_host_summary(elevated_hosts)
     _print_graph_summary(graph_state, temporal_snapshots)
+    _print_stabilization_report(stabilization_report)
 
-    print("[*] STEP 9: Exporting analysis artifacts...")
+    print("[*] STEP 10: Exporting analysis artifacts...")
     if not args.no_csv:
         pd.DataFrame([event.model_dump() for event in canonical_events]).to_csv(
             "normalized_packets.csv",
@@ -185,6 +237,7 @@ def main():
         events_to_ndjson([baseline_snapshot], "host_baseline_snapshot.ndjson")
         layer5_engine.export_deltas(host_deltas + relationship_deltas, "layer5_deltas.ndjson")
         layer5_engine.export_hypotheses(hypotheses, "layer5_hypotheses.ndjson")
+        events_to_ndjson(investigation_candidates, "layer5_investigation_candidates.ndjson")
         events_to_ndjson(graph_state.nodes, "graph_nodes.ndjson")
         events_to_ndjson(graph_state.edges, "graph_edges.ndjson")
         events_to_ndjson(temporal_snapshots, "graph_snapshots.ndjson")
@@ -195,6 +248,75 @@ def main():
     print("=" * 80)
     print("ANALYSIS COMPLETE")
     print("=" * 80 + "\n")
+
+
+def _print_priority_explanation(priority_explanation):
+    if not priority_explanation:
+        return
+
+    components = priority_explanation.get("computed_from", {})
+    print("\n    Priority Explanation:")
+    print(f"      Priority Score: {priority_explanation.get('priority_score', 0.0):.1f}")
+    print("      Computed From:")
+    for label, component in (
+        ("Host Risk", components.get("host_risk", {})),
+        ("Confidence", components.get("confidence", {})),
+        ("Criticality", components.get("asset_criticality", {})),
+    ):
+        print(
+            f"      - {label}: {component.get('value', 0.0):.1f} x {component.get('weight', 0.0):.2f} "
+            f"= {component.get('contribution', 0.0):.2f}"
+        )
+
+
+def _print_stabilization_report(report):
+    print("\n" + "=" * 80)
+    print("LAYER 4/5 STABILIZATION REPORT")
+    print("=" * 80)
+
+    graph = report["graph_consistency"]
+    snapshot = report["snapshot_quality"]
+    role = report["role_consistency"]
+    hypothesis = report["hypothesis_validation"]
+    candidate = report["candidate_validation"]
+    readiness = report["layer6_readiness"]
+
+    print("\n    Graph Health:")
+    print(f"      Graph Nodes: {graph['graph_nodes']}")
+    print(f"      Classified Nodes: {graph['classified_nodes']}")
+    print(f"      Unclassified Nodes: {graph['unclassified_nodes']}")
+    print(f"      Investigative Nodes: {graph['investigative_nodes']}")
+    print(f"      Suppressed Nodes: {graph['suppressed_nodes']}")
+
+    print("\n    Community Distribution:")
+    for community, count in sorted(graph["community_distribution"].items()):
+        print(f"      - {community}: {count}")
+
+    print("\n    Role Consistency:")
+    print(f"      Mismatches: {role['mismatch_count']}")
+
+    print("\n    Detection Health:")
+    print(f"      Hypotheses Checked: {hypothesis['hypotheses_checked']}")
+    print(f"      Hypothesis Errors: {hypothesis['error_count']}")
+
+    print("\n    Investigation Candidate Health:")
+    print(f"      Candidates Checked: {candidate['candidates_checked']}")
+    print(f"      Candidate Errors: {candidate['error_count']}")
+
+    print("\n    Snapshot Quality:")
+    print(f"      Total Snapshots: {snapshot['total_snapshots']}")
+    print(f"      Meaningful Snapshots: {snapshot['meaningful_snapshots']}")
+    print(f"      Redundant Snapshots: {snapshot['redundant_snapshots']}")
+    print(f"      Quality Score: {snapshot['quality_score']:.2f}")
+
+    print("\n    Layer 6 Readiness:")
+    print(f"      Ready: {readiness['ready']}")
+    print(f"      Missing Components: {readiness['missing_components']}")
+
+    print("\n    STATUS: " + ("STABLE" if report["stable"] else "NEEDS ATTENTION"))
+    if report["stable"]:
+        print("    READY FOR LAYER 6")
+    print()
 
 
 def _assign_timeline_indexes(events):
@@ -260,7 +382,7 @@ def _print_host_summary(elevated_hosts):
     print(f"\n    Elevated Host Profiles: {len(elevated_hosts):,}")
     for profile in sorted(elevated_hosts, key=lambda item: item.risk_score, reverse=True)[:5]:
         print(f"\n    Host: {profile.ip_address}")
-        print(f"    Inferred Role: {profile.inferred_role} ({profile.role_confidence:.1%})")
+        print(f"    Role: {role_to_display(profile.role)} ({profile.role_confidence:.1%})")
         print(f"    Risk Score: {profile.risk_score:.1f}")
         print(f"    Confidence: {profile.confidence:.1%}")
         print("\n    Indicators:")
@@ -296,6 +418,11 @@ def _print_graph_summary(graph_state, temporal_snapshots):
     communities = graph_state.metadata.get("communities", {})
     if communities:
         print(f"\n    Behavioral Communities:")
+        diagnostics = graph_state.metadata.get("community_diagnostics", {})
+        if diagnostics:
+            print(f"      Graph Nodes: {diagnostics.get('graph_nodes', 0)}")
+            print(f"      Classified Nodes: {diagnostics.get('classified_nodes', 0)}")
+            print(f"      Unclassified Nodes: {diagnostics.get('unclassified_nodes', 0)}")
         total_nodes = sum(len(ips) for ips in communities.values())
         for community_name in sorted(communities.keys()):
             ips = communities[community_name]

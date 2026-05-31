@@ -10,7 +10,10 @@ Enhances graph-native analytics with behavioral intelligence.
 """
 
 from typing import Dict, List, Set, Tuple
+from behavior.node_filters import is_non_investigative_node
+from behavior.role_manager import INFRASTRUCTURE, normalize_role
 from behavior.schemas import GraphEdge, GraphNode
+from graph.community_classifier import classify_graph_nodes
 
 
 # ============================================================================
@@ -46,20 +49,12 @@ def is_infrastructure_noise(node: GraphNode) -> bool:
     Returns True if node should be downweighted/suppressed.
     """
     # Suppress special addresses
-    ip = node.ip_address
-    if ip in INFRASTRUCTURE_NOISE_PATTERNS["broadcast_addresses"]:
+    if is_non_investigative_node(node):
         return True
     
     # Suppress multicast range (224.0.0.0 - 239.255.255.255)
-    try:
-        octets = [int(x) for x in ip.split(".")]
-        if octets[0] in range(224, 240):
-            return True
-    except (ValueError, IndexError):
-        pass
-    
     # Suppress infrastructure-only roles
-    if node.inferred_role == "infrastructure_device":
+    if normalize_role(getattr(node, "role", node.inferred_role)) == INFRASTRUCTURE:
         # Check if this node only participates in infrastructure protocols
         protocols = set(node.metadata.get("protocols", []))
         infrastructure_only = {"dhcp", "dns", "ntp", "arp", "ldap"}
@@ -102,7 +97,7 @@ def is_investigative_entity(node: GraphNode, edges: List[GraphEdge] = None) -> b
         return True
     
     # Infrastructure devices are borderline - include but low priority
-    if node.inferred_role == "infrastructure_device":
+    if normalize_role(getattr(node, "role", node.inferred_role)) == INFRASTRUCTURE:
         # Only if they have some significance
         if node.node_degree >= 2:
             return True
@@ -193,7 +188,7 @@ def detect_behavioral_communities(
         return {"Unknown": []}
     
     # Use behavioral classification instead of connectivity clustering
-    return _classify_behavioral_communities(nodes, edges)
+    return classify_graph_nodes(nodes, edges)
 
 
 def _classify_node_behavior(
@@ -214,7 +209,7 @@ def _classify_node_behavior(
     """
     
     # Explicit role overrides
-    if node.inferred_role == "infrastructure_device":
+    if normalize_role(getattr(node, "role", node.inferred_role)) == INFRASTRUCTURE:
         return "Infrastructure"
     
     # Domain controller heuristics
@@ -635,7 +630,7 @@ def compute_graph_health_metrics(
     )
     
     # Infrastructure ratio (infrastructure nodes / total)
-    infra_count = sum(1 for n in nodes if n.inferred_role == "infrastructure_device")
+    infra_count = sum(1 for n in nodes if normalize_role(getattr(n, "role", n.inferred_role)) == INFRASTRUCTURE)
     metrics["infrastructure_ratio"] = round(infra_count / len(nodes), 4)
     
     # Suspicious edge ratio

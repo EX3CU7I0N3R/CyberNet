@@ -318,7 +318,10 @@ def detect_relationship_deltas(
                     "persistence_previous": previous.persistence,
                     "persistence_current": current.persistence,
                     "persistence_delta": persistence_delta,
+                    "source": current.source,
+                    "target": current.target,
                     "protocols": current.protocols,
+                    "flows": getattr(current, "flows", 0),
                 },
                 baseline_comparison=baseline_comparison,
             ))

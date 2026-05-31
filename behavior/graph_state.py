@@ -77,6 +77,8 @@ def build_graph_state(
     
     # FIX 3: Use behavioral community detection
     communities = detect_behavioral_communities(nodes, edges)
+    classified_node_count = sum(len(ips) for ips in communities.values())
+    unclassified_node_count = max(len(nodes) - classified_node_count, 0)
     
     # FIX 4: Add explainable graph risk
     risk_breakdown = decompose_graph_risk(nodes, edges)
@@ -95,6 +97,11 @@ def build_graph_state(
         "community_count": len(communities),
         "community_summary": {
             name: len(ips) for name, ips in communities.items()
+        },
+        "community_diagnostics": {
+            "graph_nodes": len(nodes),
+            "classified_nodes": classified_node_count,
+            "unclassified_nodes": unclassified_node_count,
         },
         "risk_breakdown": risk_breakdown,
         "risk_contributors": list(risk_breakdown.keys()),
@@ -214,6 +221,10 @@ def build_temporal_snapshots(
             communities != prev_communities or
             (prev_risk is not None and abs(risk - prev_risk) >= 1.0)
         )
+
+        if state_changed and snapshot_data.metadata.get("quality_reason") == "redundant_snapshot":
+            snapshot_data.metadata["quality_score"] = 1.0
+            snapshot_data.metadata["quality_reason"] = "useful_snapshot"
         
         # Also enforce minimum time between snapshots (30 seconds)
         if last_snapshot_time:

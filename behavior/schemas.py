@@ -68,6 +68,7 @@ class HostProfile(BaseModel):
     hourly_activity_distribution: Dict[str, int] = Field(default_factory=dict)
 
     inferred_role: str = "unknown"
+    role: str = "UNKNOWN"
     role_confidence: float = 0.0
     role_evidence: List[str] = Field(default_factory=list)
 
@@ -154,6 +155,7 @@ class GraphNode(BaseModel):
     ip_address: str
     hostname: Optional[str] = None
     inferred_role: str = "unknown"
+    role: str = "UNKNOWN"
     
     # Behavior
     risk_score: float = 0.0

@@ -15,6 +15,7 @@ from behavior.graph_intelligence import (
     compute_behavioral_centrality,
     is_infrastructure_noise,
 )
+from behavior.node_filters import is_non_investigative_node
 from behavior.schemas import GraphEdge, GraphNode, GraphState
 
 
@@ -164,7 +165,7 @@ def _compute_graph_metrics(nodes: List[GraphNode], edges: List[GraphEdge]) -> Di
     
     # FIX 2: Filter high centrality nodes - suppress infrastructure noise
     # Only include non-infrastructure nodes in top rankings
-    behavioral_nodes = [n for n in nodes if not is_infrastructure_noise(n)]
+    behavioral_nodes = [n for n in nodes if not is_infrastructure_noise(n) and not is_non_investigative_node(n)]
     sorted_by_centrality = sorted(
         behavioral_nodes,
         key=lambda n: n.centrality_hint,
@@ -174,7 +175,11 @@ def _compute_graph_metrics(nodes: List[GraphNode], edges: List[GraphEdge]) -> Di
     
     # If no behavioral nodes, include some infrastructure for completeness
     if len(high_centrality_nodes) < 3:
-        all_sorted = sorted(nodes, key=lambda n: n.centrality_hint, reverse=True)
+        all_sorted = sorted(
+            [node for node in nodes if not is_non_investigative_node(node)],
+            key=lambda n: n.centrality_hint,
+            reverse=True,
+        )
         high_centrality_nodes = [n.ip_address for n in all_sorted[:5]]
     
     # Collect relationship types

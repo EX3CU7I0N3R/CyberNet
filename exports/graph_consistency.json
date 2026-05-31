@@ -1,0 +1,21 @@
+{
+  "graph_nodes": 104,
+  "classified_nodes": 104,
+  "unclassified_nodes": 0,
+  "community_count": 4,
+  "community_distribution": {
+    "Infrastructure": 4,
+    "Workstations": 1,
+    "External Services": 98,
+    "Unknown": 1
+  },
+  "role_count": {
+    "INFRASTRUCTURE": 4,
+    "UNKNOWN": 98,
+    "WORKSTATION": 1,
+    "EXTERNAL_SERVICE": 1
+  },
+  "investigative_nodes": 98,
+  "suppressed_nodes": 6,
+  "valid": true
+}

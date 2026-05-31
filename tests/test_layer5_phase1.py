@@ -4,8 +4,9 @@ import types
 import unittest
 
 from layer5.delta import detect_host_deltas, detect_relationship_deltas
-from layer5.engine import Layer5Phase1Engine
+from layer5.engine import Layer5Phase1Engine, compute_priority_score
 from layer5.exports import export_ndjson
+from layer5.hypotheses import compute_destination_exclusivity, compute_destination_rarity, deduplicate_evidence
 from layer5.registry import HypothesisRegistry
 from layer5.schemas import BehavioralDelta
 
@@ -132,6 +133,119 @@ class TestLayer5Phase1(unittest.TestCase):
         self.assertIn("host_sweep", hypothesis_types)
         self.assertIn("beaconing", hypothesis_types)
         self.assertIn("persistent_tls", hypothesis_types)
+
+    def test_destination_rarity_and_candidate_ranking(self):
+        engine = Layer5Phase1Engine()
+        host_profiles = {
+            "10.2.28.88": types.SimpleNamespace(risk_score=74.0, role="WORKSTATION", role_confidence=0.84, external_unique_hosts=95, internal_unique_hosts=4, protocols=["dns", "https", "smb"]),
+            "10.2.28.89": types.SimpleNamespace(risk_score=20.0, role="WORKSTATION", role_confidence=0.70, external_unique_hosts=2, internal_unique_hosts=1, protocols=["dns", "https"]),
+        }
+        rare_destination = BehavioralDelta(
+            delta_id="rare-beacon",
+            entity_type="relationship",
+            delta_type="external_relationship_emergence",
+            entity_id="edge-rare",
+            detected_at="2026-05-31T00:00:00Z",
+            confidence=0.8,
+            severity="medium",
+            summary="Rare external TLS relationship.",
+            metrics={
+                "source": "10.2.28.88",
+                "target": "45.131.214.85",
+                "protocols": ["https"],
+                "persistence": 0.68,
+                "flows": 3,
+            },
+        )
+        common_cloud = BehavioralDelta(
+            delta_id="cloud-beacon",
+            entity_type="relationship",
+            delta_type="external_relationship_emergence",
+            entity_id="edge-cloud",
+            detected_at="2026-05-31T00:00:00Z",
+            confidence=0.8,
+            severity="medium",
+            summary="Common cloud TLS relationship.",
+            metrics={
+                "source": "10.2.28.88",
+                "target": "104.208.203.89",
+                "protocols": ["https"],
+                "persistence": 0.68,
+                "flows": 3,
+            },
+        )
+        shared_cloud = BehavioralDelta(
+            delta_id="shared-cloud",
+            entity_type="relationship",
+            delta_type="external_relationship_emergence",
+            entity_id="edge-shared-cloud",
+            detected_at="2026-05-31T00:00:00Z",
+            confidence=0.8,
+            severity="medium",
+            summary="Second consumer for cloud endpoint.",
+            metrics={
+                "source": "10.2.28.89",
+                "target": "104.208.203.89",
+                "protocols": ["https"],
+                "persistence": 0.68,
+                "flows": 3,
+            },
+        )
+
+        hypotheses = engine.evaluate([], [rare_destination, common_cloud, shared_cloud], host_profiles)
+        beaconing = [hypothesis for hypothesis in hypotheses if hypothesis.hypothesis_type == "beaconing"]
+
+        self.assertGreaterEqual(len(beaconing), 2)
+        self.assertEqual(beaconing[0].metadata["relationship_destination"], "45.131.214.85")
+        self.assertGreater(
+            beaconing[0].confidence,
+            next(
+                hypothesis.confidence
+                for hypothesis in beaconing
+                if hypothesis.metadata["relationship_destination"] == "104.208.203.89"
+            ),
+        )
+        self.assertIn("common_cloud_service", beaconing[-1].contradictory_evidence)
+        self.assertIn("Confidence", beaconing[0].confidence_explanation)
+
+        candidates = engine.build_investigation_candidates(hypotheses, host_profiles)
+        self.assertEqual(candidates[0].host, "10.2.28.88")
+        self.assertGreater(candidates[0].confidence, 0.0)
+        self.assertNotIn("supporting_evidence", candidates[0].model_dump())
+        self.assertNotIn("contradictory_evidence", candidates[0].model_dump())
+        self.assertIn("findings", candidates[0].narrative_context)
+        self.assertIn("rare and exclusive external destination", candidates[0].candidate_rationale)
+        self.assertEqual(candidates[0].host_summary["host_role"], "Workstation")
+
+        rare_finding = next(
+            hypothesis
+            for hypothesis in beaconing
+            if hypothesis.metadata["relationship_destination"] == "45.131.214.85"
+        )
+        cloud_finding = next(
+            hypothesis
+            for hypothesis in beaconing
+            if hypothesis.metadata["relationship_destination"] == "104.208.203.89"
+        )
+        self.assertEqual(rare_finding.finding_tier, "PRIMARY")
+        self.assertIn(cloud_finding.finding_tier, {"SECONDARY", "SUPPORTING"})
+        self.assertIn("common_cloud_service", cloud_finding.confidence_explanation)
+        self.assertNotIn("no contradictory evidence", cloud_finding.confidence_explanation)
+
+    def test_destination_scoring_helpers(self):
+        self.assertEqual(compute_destination_rarity(1), 1.0)
+        self.assertEqual(compute_destination_rarity(50), 0.02)
+        self.assertEqual(compute_destination_exclusivity(1), 1.0)
+        self.assertLess(compute_destination_exclusivity(50), 0.1)
+
+    def test_evidence_deduplication_preserves_order(self):
+        self.assertEqual(
+            deduplicate_evidence([" periodicity ", "Periodicity", "persistence", "", "PERSISTENCE"]),
+            ["periodicity", "persistence"],
+        )
+
+    def test_priority_score_calculation(self):
+        self.assertEqual(compute_priority_score(74.0, 92.0, 50.0), 73.1)
 
     def test_ndjson_export(self):
         hypothesis = BehavioralDelta(
