@@ -14,6 +14,7 @@ from behavior.host_aggregator import build_host_profiles
 from behavior.relationships import build_relationships
 from ingestion.parse import events_to_ndjson, extract_packet_info, parse_pcap
 from layer5 import Layer5Phase1Engine, detect_host_deltas, detect_relationship_deltas
+from layer6 import NarrativeManager, export_narratives
 from behavior.role_manager import role_to_display
 from stabilization_audit import write_stabilization_exports
 
@@ -205,7 +206,18 @@ def main():
     )
     print("    [OK] Wrote stabilization audit artifacts\n")
 
-    print("[*] STEP 9: Analysis summary\n")
+    print("[*] STEP 9: Building Layer 6 investigation narratives...")
+    narrative_manager = NarrativeManager()
+    investigation_narratives = narrative_manager.build_narratives(
+        investigation_candidates,
+        host_profiles_by_ip=host_profiles_by_ip,
+        graph_context=graph_state,
+    )
+    export_narratives(investigation_narratives, _artifact_path("investigation_narratives.ndjson"))
+    print(f"    [OK] Generated {len(investigation_narratives):,} investigation narratives\n")
+    _print_investigation_narratives(investigation_narratives)
+
+    print("[*] STEP 10: Analysis summary\n")
     _print_direction_summary(enriched_flows)
     _print_protocol_summary(enriched_flows)
     _print_suspicious_flows(suspicious_flows)
@@ -213,7 +225,7 @@ def main():
     _print_graph_summary(graph_state, temporal_snapshots)
     _print_stabilization_report(stabilization_report)
 
-    print("[*] STEP 10: Exporting analysis artifacts...")
+    print("[*] STEP 11: Exporting analysis artifacts...")
     if not args.no_csv:
         pd.DataFrame([event.model_dump() for event in canonical_events]).to_csv(
             _artifact_path("normalized_packets.csv"),
@@ -327,6 +339,56 @@ def _print_stabilization_report(report):
     if report["stable"]:
         print("    READY FOR LAYER 6")
     print()
+
+
+def _print_investigation_narratives(narratives):
+    for narrative in narratives:
+        print("=" * 80)
+        print("INVESTIGATION NARRATIVE")
+        print("=" * 80)
+        print(f"\n    Host:\n    {narrative.host}")
+        print(f"\n    Priority:\n    {narrative.priority}")
+        print("\n    Risk Context:")
+        rank = narrative.risk_context.get("environment_rank")
+        size = narrative.risk_context.get("environment_size")
+        rank_text = f"{rank}/{size}" if rank and size else "unknown"
+        print(f"    Host Risk: {narrative.risk_context.get('host_risk', 0.0):.1f}")
+        print(f"    Priority: {narrative.risk_context.get('priority', narrative.priority)}")
+        print(f"    Environment Rank: {rank_text}")
+        print(f"    {narrative.risk_context.get('selection_reason', '')}")
+        print("\n    Executive Summary:")
+        print(f"    {narrative.executive_summary}")
+        print("\n    Behavioral Summary:")
+        print(f"    {narrative.behavioral_summary}")
+        print("\n    Investigation Reasoning:")
+        print(f"    {narrative.investigation_reasoning}")
+        print("\n    Evidence Summary:")
+        print(f"    {narrative.evidence_summary}")
+        print("\n    Confidence Drivers:")
+        for impact, label in (("high", "High Impact"), ("medium", "Medium Impact"), ("low", "Low Impact")):
+            print(f"    {label}:")
+            drivers = narrative.confidence_drivers.get(impact, [])
+            if drivers:
+                for driver in drivers:
+                    print(f"    * {driver}")
+            else:
+                print("    * none")
+        print("\n    Negative Findings:")
+        for finding in narrative.negative_findings:
+            print(f"    * {finding}")
+        print("\n    Assessment:")
+        print(f"    {narrative.assessment}")
+        print("\n    Confidence Explanation:")
+        print(f"    {narrative.confidence_explanation}")
+        print("\n    Recommended Actions:")
+        for action in narrative.recommended_actions:
+            print(f"    * {action}")
+        print("\n    Investigation Plan:")
+        for index, action in enumerate(narrative.investigation_plan, 1):
+            print(f"    {index}. {action}")
+        print("\n    Narrative Quality Score:")
+        print(f"    {narrative.narrative_quality_score:.0f}")
+        print()
 
 
 def _assign_timeline_indexes(events):
