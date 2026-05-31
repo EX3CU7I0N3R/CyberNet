@@ -1,11 +1,20 @@
 """
-Layer 4: Graph Metrics Engine
+Layer 4: Graph Metrics Engine (HARDENED)
 Computes lightweight graph metrics for topology analysis.
 Keeps replay-safe and avoids expensive graph algorithms.
+
+FIXES:
+- Replace legacy centrality with behavioral centrality from graph_intelligence
+- Suppress infrastructure noise in centrality rankings
+- Add infrastructure noise filtering
 """
 
 from typing import Dict, List
 
+from behavior.graph_intelligence import (
+    compute_behavioral_centrality,
+    is_infrastructure_noise,
+)
 from behavior.schemas import GraphEdge, GraphNode, GraphState
 
 
@@ -14,12 +23,17 @@ def compute_graph_metrics(
     edges: List[GraphEdge]
 ) -> Dict:
     """
-    Compute lightweight graph metrics.
+    Compute lightweight graph metrics (HARDENED).
+    
+    Changes:
+    - Behavioral centrality replaces topology-only centrality
+    - Infrastructure noise is suppressed from rankings
+    - Node priority uses behavioral importance
     
     Returns:
-    - Node metrics (degree, weighted_degree, centrality_hint)
-    - Edge metrics (persistence, communication_density, intensity)
-    - Graph metrics (density, isolated_nodes, connected_components, suspicious_clusters)
+    - Node metrics (degree, weighted_degree, behavioral_centrality)
+    - Edge metrics (persistence, communication_density)
+    - Graph metrics (density, isolated_nodes, suspicious_clusters)
     """
     # Build adjacency for quick lookups
     node_map = {node.node_id: node for node in nodes}
@@ -34,13 +48,13 @@ def compute_graph_metrics(
         edge_map[edge.source_node]["outbound"].append(edge)
         edge_map[edge.target_node]["inbound"].append(edge)
     
-    # Compute node metrics
-    _compute_node_metrics(nodes, edge_map, node_map)
+    # Compute node metrics (with behavioral centrality)
+    _compute_node_metrics(nodes, edges, edge_map, node_map)
     
     # Compute edge metrics
     _compute_edge_metrics(edges)
     
-    # Compute graph metrics
+    # Compute graph metrics (with noise suppression)
     graph_metrics = _compute_graph_metrics(nodes, edges)
     
     return graph_metrics
@@ -48,10 +62,11 @@ def compute_graph_metrics(
 
 def _compute_node_metrics(
     nodes: List[GraphNode],
+    edges: List[GraphEdge],
     edge_map: Dict,
     node_map: Dict
 ) -> None:
-    """Compute per-node metrics and update nodes in place."""
+    """Compute per-node metrics with behavioral centrality (HARDENED)."""
     
     for node in nodes:
         node_id = node.node_id
@@ -76,18 +91,27 @@ def _compute_node_metrics(
         
         node.weighted_degree = round(weighted_degree, 4)
         
-        # Centrality hint = normalized degree * risk signal
-        max_degree = max(1, max((n.node_degree for n in nodes), default=1))
-        degree_norm = node.node_degree / max_degree
-        risk_signal = min(node.risk_score / 100.0, 1.0)
-        node.centrality_hint = round(degree_norm * 0.6 + risk_signal * 0.4, 4)
+        # FIX 1: Use behavioral centrality instead of topology-only centrality
+        # Accounts for: degree + risk + externality + relationship diversity + protocol diversity
+        node.centrality_hint = compute_behavioral_centrality(
+            node=node,
+            nodes=nodes,
+            edges=edges,
+            suppress_noise=True
+        )
         
-        # Node priority = risk + centrality
-        node.node_priority = round(node.risk_score * 0.5 + node.centrality_hint * 50, 4)
+        # FIX 2: Recalculate node priority using behavioral importance
+        # node_priority = (risk * 0.4) + (centrality * 60)
+        node.node_priority = round(
+            (node.risk_score * 0.4) + (node.centrality_hint * 60),
+            4
+        )
         
-        # Communication density already computed by graph_builder, but refine it
+        # Communication density already computed by graph_builder, refine it
         if node.node_degree > 0:
-            node.communication_density = round(node.weighted_degree / (node.node_degree + 1), 4)
+            node.communication_density = round(
+                node.weighted_degree / (node.node_degree + 1), 4
+            )
 
 
 def _compute_edge_metrics(edges: List[GraphEdge]) -> None:
@@ -102,7 +126,7 @@ def _compute_edge_metrics(edges: List[GraphEdge]) -> None:
 
 
 def _compute_graph_metrics(nodes: List[GraphNode], edges: List[GraphEdge]) -> Dict:
-    """Compute graph-level metrics."""
+    """Compute graph-level metrics (HARDENED with noise suppression)."""
     
     if not nodes:
         return {
@@ -126,8 +150,6 @@ def _compute_graph_metrics(nodes: List[GraphNode], edges: List[GraphEdge]) -> Di
     isolated_nodes = [n for n in nodes if n.node_id not in nodes_with_edges]
     
     # Compute graph density
-    # density = actual_edges / possible_edges
-    # For directed graph: possible_edges = n * (n - 1)
     n = len(nodes)
     possible_edges = max(1, n * (n - 1))
     graph_density = round(len(edges) / possible_edges, 6)
@@ -140,9 +162,20 @@ def _compute_graph_metrics(nodes: List[GraphNode], edges: List[GraphEdge]) -> Di
     top_risk_nodes = sorted_nodes[:max(1, len(nodes) // 10)]
     graph_risk_score = round(sum(n.risk_score for n in top_risk_nodes) / len(top_risk_nodes), 2)
     
-    # Find high centrality nodes
-    sorted_by_centrality = sorted(nodes, key=lambda n: n.centrality_hint, reverse=True)
+    # FIX 2: Filter high centrality nodes - suppress infrastructure noise
+    # Only include non-infrastructure nodes in top rankings
+    behavioral_nodes = [n for n in nodes if not is_infrastructure_noise(n)]
+    sorted_by_centrality = sorted(
+        behavioral_nodes,
+        key=lambda n: n.centrality_hint,
+        reverse=True
+    )
     high_centrality_nodes = [n.ip_address for n in sorted_by_centrality[:5]]
+    
+    # If no behavioral nodes, include some infrastructure for completeness
+    if len(high_centrality_nodes) < 3:
+        all_sorted = sorted(nodes, key=lambda n: n.centrality_hint, reverse=True)
+        high_centrality_nodes = [n.ip_address for n in all_sorted[:5]]
     
     # Collect relationship types
     relationship_types = sorted(set(e.relationship_type for e in edges))
@@ -161,51 +194,3 @@ def _compute_graph_metrics(nodes: List[GraphNode], edges: List[GraphEdge]) -> Di
         "avg_node_degree": avg_degree,
         "suspicious_edges": suspicious_edges,
     }
-
-
-def compute_community_detection(
-    nodes: List[GraphNode],
-    edges: List[GraphEdge]
-) -> Dict[str, List[str]]:
-    """
-    Lightweight community detection using node connectivity.
-    Groups nodes by simple connectivity clustering (no expensive algorithms).
-    """
-    # Build adjacency
-    adjacency = {}
-    for node in nodes:
-        adjacency[node.node_id] = set()
-    
-    for edge in edges:
-        adjacency[edge.source_node].add(edge.target_node)
-        adjacency[edge.target_node].add(edge.source_node)
-    
-    # Simple clustering: find connected components
-    visited = set()
-    communities = {}
-    community_id = 0
-    
-    for node_id in adjacency:
-        if node_id in visited:
-            continue
-        
-        # BFS to find connected component
-        queue = [node_id]
-        component = set()
-        
-        while queue:
-            current = queue.pop(0)
-            if current in visited:
-                continue
-            
-            visited.add(current)
-            component.add(current)
-            
-            for neighbor in adjacency[current]:
-                if neighbor not in visited:
-                    queue.append(neighbor)
-        
-        communities[f"community_{community_id}"] = list(component)
-        community_id += 1
-    
-    return communities

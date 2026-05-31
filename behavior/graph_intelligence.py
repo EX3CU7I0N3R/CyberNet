@@ -69,6 +69,48 @@ def is_infrastructure_noise(node: GraphNode) -> bool:
     return False
 
 
+def is_investigative_entity(node: GraphNode, edges: List[GraphEdge] = None) -> bool:
+    """
+    FIX 1: Determine if node is worth investigating.
+    
+    Returns False for:
+    - Broadcast/multicast entities
+    - Infrastructure-only entities
+    - Nodes with no behavioral significance
+    
+    Infrastructure nodes may be returned, but they're de-prioritized.
+    """
+    # Reject pure broadcast/multicast
+    if is_infrastructure_noise(node):
+        return False
+    
+    # Accept nodes with meaningful behavioral signals
+    if node.risk_score >= 5.0:
+        return True
+    
+    # Accept nodes with external connections
+    if node.metadata.get("external_connections", 0) > 0:
+        return True
+    
+    # Accept nodes with behavioral indicators
+    if node.behavioral_indicators:
+        return True
+    
+    # Accept nodes with multiple protocols
+    protocols = set(node.metadata.get("protocols", []))
+    if len(protocols) > 2:
+        return True
+    
+    # Infrastructure devices are borderline - include but low priority
+    if node.inferred_role == "infrastructure_device":
+        # Only if they have some significance
+        if node.node_degree >= 2:
+            return True
+        return False
+    
+    return True
+
+
 def compute_behavioral_centrality(
     node: GraphNode,
     nodes: List[GraphNode],
@@ -135,122 +177,206 @@ def detect_behavioral_communities(
     edges: List[GraphEdge]
 ) -> Dict[str, List[str]]:
     """
-    Detect communities using weighted community detection.
-    Accounts for:
-    - Network connectivity (structure)
-    - Relationship types (semantics)
-    - Host roles (behavior)
-    - Protocol usage (semantics)
+    FIX 2: Detect communities using behavioral classification.
+    
+    Classifies nodes into:
+    - Domain Controllers
+    - Servers
+    - Workstations
+    - External Services
+    - Infrastructure
+    - Unknown
     
     Returns dict of community_name -> [ip_addresses]
     """
-    if not nodes or not edges:
-        return {"ungrouped": [n.ip_address for n in nodes]}
+    if not nodes:
+        return {"Unknown": []}
     
-    # Phase 1: Role-based grouping (semantic)
-    role_groups = _group_by_role(nodes)
-    
-    # Phase 2: Connectivity clustering (structural)
-    connectivity_groups = _detect_connectivity_communities(nodes, edges)
-    
-    # Phase 3: Merge and refine
-    final_communities = _merge_communities(role_groups, connectivity_groups, edges)
-    
-    return final_communities
+    # Use behavioral classification instead of connectivity clustering
+    return _classify_behavioral_communities(nodes, edges)
 
 
-def _group_by_role(nodes: List[GraphNode]) -> Dict[str, List[str]]:
-    """Group nodes by inferred role."""
-    groups = {}
-    
-    for node in nodes:
-        role = node.inferred_role or "unknown"
-        if role not in groups:
-            groups[role] = []
-        groups[role].append(node.ip_address)
-    
-    return groups
-
-
-def _detect_connectivity_communities(
+def _classify_node_behavior(
+    node: GraphNode,
     nodes: List[GraphNode],
-    edges: List[GraphEdge],
-    max_iterations: int = 10
-) -> Dict[str, List[str]]:
+    edges: List[GraphEdge]
+) -> str:
     """
-    Simple label propagation for connectivity-based communities.
-    Not expensive, but effective for network topology.
+    FIX 2: Classify node into behavioral community.
+    
+    Returns:
+    - Domain Controllers
+    - Servers
+    - Workstations
+    - External Services
+    - Infrastructure
+    - Unknown
     """
-    node_map = {node.node_id: node for node in nodes}
     
-    # Build adjacency
-    adjacency = {node.node_id: set() for node in nodes}
-    for edge in edges:
-        adjacency[edge.source_node].add(edge.target_node)
-        adjacency[edge.target_node].add(edge.source_node)
+    # Explicit role overrides
+    if node.inferred_role == "infrastructure_device":
+        return "Infrastructure"
     
-    # Initialize labels
-    labels = {node.node_id: idx for idx, node in enumerate(nodes)}
+    # Domain controller heuristics
+    protocols = set(node.metadata.get("protocols", []))
+    if any(p in protocols for p in ["ldap", "kerberos", "krb5", "msrpc"]):
+        if node.node_degree > 5:  # Many connections
+            return "Domain Controllers"
     
-    # Propagate labels
-    for iteration in range(max_iterations):
-        new_labels = labels.copy()
-        for node_id in labels:
-            neighbors = adjacency.get(node_id, set())
-            if neighbors:
-                neighbor_labels = [labels[n] for n in neighbors if n in labels]
-                if neighbor_labels:
-                    # Choose most common neighbor label
-                    new_labels[node_id] = max(
-                        set(neighbor_labels),
-                        key=neighbor_labels.count
-                    )
+    # External service heuristics
+    try:
+        octets = [int(x) for x in node.ip_address.split(".")]
+        # Check if external (simple heuristic: not 10.x, 172.16-31.x, 192.168.x)
+        is_external = not (
+            (octets[0] == 10) or
+            (octets[0] == 172 and 16 <= octets[1] <= 31) or
+            (octets[0] == 192 and octets[1] == 168)
+        )
         
-        if new_labels == labels:
-            break
-        labels = new_labels
+        if is_external:
+            # External IPs with multiple internal consumers
+            consumers = sum(1 for e in edges if e.target_node == node.node_id)
+            if consumers >= 3 and ("https" in protocols or "tls" in protocols):
+                return "External Services"
+            elif consumers >= 2:
+                return "External Services"
+    except (ValueError, IndexError):
+        pass
     
-    # Group by label
-    communities = {}
-    for node in nodes:
-        label = labels.get(node.node_id, 0)
-        label_key = f"connectivity_{label}"
-        if label_key not in communities:
-            communities[label_key] = []
-        communities[label_key].append(node.ip_address)
+    # Server heuristics
+    inbound_count = sum(1 for e in edges if e.target_node == node.node_id)
+    outbound_count = sum(1 for e in edges if e.source_node == node.node_id)
     
-    return communities
+    if inbound_count > outbound_count * 2 and inbound_count > 5:
+        # More inbound than outbound = likely server
+        return "Servers"
+    
+    # Workstation heuristics
+    external_connections = node.metadata.get("external_connections", 0)
+    if external_connections > 0 or outbound_count > inbound_count:
+        # Workstations reach out more than they receive
+        return "Workstations"
+    
+    return "Unknown"
 
 
-def _merge_communities(
-    role_groups: Dict[str, List[str]],
-    connectivity_groups: Dict[str, List[str]],
+def _classify_behavioral_communities(
+    nodes: List[GraphNode],
     edges: List[GraphEdge]
 ) -> Dict[str, List[str]]:
     """
-    Merge role-based and connectivity-based groupings.
-    Prefer semantic grouping when clear, use connectivity otherwise.
-    """
-    result = {}
+    FIX 2: Classify all nodes into behavioral communities.
     
-    # Semantic grouping from roles
-    semantic_names = {
-        "infrastructure_device": "Infrastructure",
-        "server": "Servers",
-        "workstation": "Workstations",
-        "unknown": "Ungrouped"
+    Returns dict of community_name -> [ip_addresses]
+    """
+    communities = {
+        "Domain Controllers": [],
+        "Servers": [],
+        "Workstations": [],
+        "External Services": [],
+        "Infrastructure": [],
+        "Unknown": [],
     }
     
-    for role, ips in role_groups.items():
-        group_name = semantic_names.get(role, role)
-        result[group_name] = ips
+    for node in nodes:
+        classification = _classify_node_behavior(node, nodes, edges)
+        communities[classification].append(node.ip_address)
     
-    return result
+    # Remove empty communities
+    communities = {k: v for k, v in communities.items() if v}
+    
+    return communities
 
 
 # ============================================================================
 # Behavioral Importance Modeling
 # ============================================================================
+
+def infer_external_service(
+    node: GraphNode,
+    edges: List[GraphEdge],
+    nodes: List[GraphNode]
+) -> Dict:
+    """
+    FIX 5: Identify if node is an external service.
+    
+    Conditions:
+    - External IP
+    - Multiple internal consumers
+    - TLS service behavior
+    - Stable service ports
+    - Long-lived relationships
+    
+    Returns dict with:
+    - is_external_service: bool
+    - confidence: float
+    - reason: str
+    """
+    try:
+        octets = [int(x) for x in node.ip_address.split(".")]
+        # Check if external (not 10.x, 172.16-31.x, 192.168.x)
+        is_external_ip = not (
+            (octets[0] == 10) or
+            (octets[0] == 172 and 16 <= octets[1] <= 31) or
+            (octets[0] == 192 and octets[1] == 168)
+        )
+    except (ValueError, IndexError):
+        is_external_ip = False
+    
+    if not is_external_ip:
+        return {
+            "is_external_service": False,
+            "confidence": 0.0,
+            "reason": "internal_ip"
+        }
+    
+    # Count internal consumers
+    consumers = [e.source_node for e in edges if e.target_node == node.node_id]
+    consumer_count = len(set(consumers))
+    
+    # Check protocols
+    protocols = set(node.metadata.get("protocols", []))
+    has_tls = any(p in protocols for p in ["https", "tls", "ssl"])
+    has_service_behavior = bool(protocols)
+    
+    # Check persistence
+    relationships = [e for e in edges if e.source_node == node.node_id or e.target_node == node.node_id]
+    avg_persistence = (
+        sum(r.persistence_score for r in relationships) / len(relationships)
+        if relationships else 0.0
+    )
+    
+    # Scoring
+    score = 0.0
+    reasons = []
+    
+    if consumer_count >= 3:
+        score += 0.3
+        reasons.append(f"{consumer_count}_consumers")
+    elif consumer_count >= 2:
+        score += 0.2
+        reasons.append(f"{consumer_count}_consumers")
+    
+    if has_tls:
+        score += 0.3
+        reasons.append("tls_service")
+    
+    if has_service_behavior:
+        score += 0.2
+        reasons.append("service_protocols")
+    
+    if avg_persistence >= 0.5:
+        score += 0.2
+        reasons.append("persistent_relationships")
+    
+    is_service = score >= 0.5
+    
+    return {
+        "is_external_service": is_service,
+        "confidence": round(min(score, 1.0), 2),
+        "reason": "|".join(reasons) if reasons else "low_signal"
+    }
+
 
 def compute_behavioral_importance(
     node: GraphNode,
@@ -304,42 +430,100 @@ def decompose_graph_risk(
     edges: List[GraphEdge]
 ) -> Dict[str, float]:
     """
-    Decompose graph-level risk score into explainable components.
+    FIX 3: Decompose graph-level risk into multiple components.
+    
+    Components:
+    - host_risk: Average top node risk
+    - relationship_risk: Risk from persistent/external relationships
+    - community_risk: Risk from community structure anomalies
+    - topology_risk: Risk from unusual connectivity patterns
     
     Returns dict of component_name -> risk_contribution
     """
     components = {}
     
-    # Component 1: High-risk hosts (top 10% by risk)
-    sorted_by_risk = sorted(nodes, key=lambda n: n.risk_score, reverse=True)
-    top_10_pct = max(1, len(nodes) // 10)
-    high_risk_hosts = sorted_by_risk[:top_10_pct]
-    high_risk_score = sum(h.risk_score for h in high_risk_hosts) / len(high_risk_hosts)
-    components["high_risk_hosts"] = round(high_risk_score * 0.4, 2)
-    
-    # Component 2: Persistent external relationships
-    external_edges = [e for e in edges if e.relationship_type in 
-                      ["persistent_tls", "external_tls_session"]]
-    if external_edges:
-        avg_persistence = sum(e.persistence_score for e in external_edges) / len(external_edges)
-        external_risk = avg_persistence * sum(e.relationship_risk for e in external_edges) / len(external_edges)
+    # Component 1: Host Risk (top 10% by risk)
+    if nodes:
+        sorted_by_risk = sorted(nodes, key=lambda n: n.risk_score, reverse=True)
+        top_10_pct = max(1, len(nodes) // 10)
+        high_risk_hosts = sorted_by_risk[:top_10_pct]
+        host_risk = sum(h.risk_score for h in high_risk_hosts) / len(high_risk_hosts)
     else:
-        external_risk = 0.0
-    components["persistent_external"] = round(external_risk * 0.25, 2)
+        host_risk = 0.0
+    components["host_risk"] = round(host_risk * 0.4, 2)
     
-    # Component 3: Periodic behaviors (beaconing-like)
-    periodic_edges = [e for e in edges if e.communication_pattern == "periodic"]
-    if periodic_edges:
-        periodic_risk = sum(e.relationship_risk for e in periodic_edges) / len(periodic_edges)
+    # Component 2: Relationship Risk
+    if edges:
+        # Persistent external relationships
+        external_edges = [
+            e for e in edges if e.relationship_type in 
+            ["persistent_tls", "external_tls_session", "directory_authentication", "administrative_rpc"]
+        ]
+        if external_edges:
+            avg_persistence = sum(e.persistence_score for e in external_edges) / len(external_edges)
+            avg_risk = sum(e.relationship_risk for e in external_edges) / len(external_edges)
+            rel_risk = avg_persistence * avg_risk
+        else:
+            rel_risk = 0.0
+        
+        # Periodic behaviors (beaconing-like)
+        periodic_edges = [e for e in edges if e.communication_pattern == "periodic"]
+        if periodic_edges:
+            periodic_risk = sum(e.relationship_risk for e in periodic_edges) / len(periodic_edges)
+        else:
+            periodic_risk = 0.0
+        
+        relationship_risk = max(rel_risk, periodic_risk)
     else:
-        periodic_risk = 0.0
-    components["periodic_communication"] = round(periodic_risk * 0.2, 2)
+        relationship_risk = 0.0
+    components["relationship_risk"] = round(relationship_risk * 0.25, 2)
     
-    # Component 4: High relationship density / fanout
-    avg_degree = sum(n.node_degree for n in nodes) / len(nodes) if nodes else 0
-    externality_sum = sum(n.metadata.get("external_connections", 0) for n in nodes)
-    fanout_risk = min(externality_sum / 1000.0, 1.0) * 25.0
-    components["external_fanout"] = round(fanout_risk * 0.15, 2)
+    # Component 3: Community Risk
+    # Risk concentration in specific communities
+    if nodes:
+        communities = detect_behavioral_communities(nodes, edges)
+        community_risk_scores = []
+        
+        for community_name, ips in communities.items():
+            community_nodes = [n for n in nodes if n.ip_address in ips]
+            if community_nodes:
+                avg_community_risk = sum(n.risk_score for n in community_nodes) / len(community_nodes)
+                community_risk_scores.append(avg_community_risk)
+        
+        # Penalize if risk is concentrated in one community
+        if community_risk_scores:
+            max_risk = max(community_risk_scores)
+            risk_concentration = max_risk / (sum(community_risk_scores) / len(community_risk_scores) + 0.01)
+            community_risk = min(risk_concentration * 2, 100.0)  # Normalize
+        else:
+            community_risk = 0.0
+    else:
+        community_risk = 0.0
+    components["community_risk"] = round(community_risk * 0.2, 2)
+    
+    # Component 4: Topology Risk
+    # Unusual fanout, isolated risky nodes, etc.
+    if nodes and edges:
+        # High fanout risk
+        external_connections = sum(n.metadata.get("external_connections", 0) for n in nodes)
+        fanout_risk = min(external_connections / 100.0, 1.0) * 25.0
+        
+        # Isolated risky nodes
+        nodes_with_edges = set()
+        for edge in edges:
+            nodes_with_edges.add(edge.source_node)
+            nodes_with_edges.add(edge.target_node)
+        
+        isolated_risky = sum(
+            1 for n in nodes 
+            if n.node_id not in nodes_with_edges and n.risk_score >= 20
+        )
+        isolation_risk = isolated_risky * 5.0
+        
+        topology_risk = max(fanout_risk, isolation_risk)
+    else:
+        topology_risk = 0.0
+    components["topology_risk"] = round(topology_risk * 0.15, 2)
     
     return components
 
@@ -394,7 +578,20 @@ def compute_graph_health_metrics(
     edges: List[GraphEdge]
 ) -> Dict[str, float]:
     """
-    Compute graph-wide behavioral health metrics.
+    FIX 7: Compute graph-wide behavioral health metrics.
+    
+    Includes:
+    - avg_node_risk
+    - avg_edge_persistence
+    - externality_ratio
+    - infrastructure_ratio
+    - suspicious_edge_ratio
+    - avg_protocol_diversity
+    - isolated_node_ratio
+    - community_balance_score (FIX 7)
+    - relationship_diversity_score (FIX 7)
+    - external_dependency_score (FIX 7)
+    - risk_concentration_score (FIX 7)
     
     Returns metrics useful for:
     - Dashboard reporting
@@ -412,6 +609,10 @@ def compute_graph_health_metrics(
             "suspicious_edge_ratio": 0.0,
             "avg_protocol_diversity": 0.0,
             "isolated_node_ratio": 0.0,
+            "community_balance_score": 0.0,
+            "relationship_diversity_score": 0.0,
+            "external_dependency_score": 0.0,
+            "risk_concentration_score": 0.0,
         }
     
     # Average node risk
@@ -452,6 +653,62 @@ def compute_graph_health_metrics(
     # Isolated node ratio (nodes with no edges)
     isolated = sum(1 for n in nodes if n.node_degree == 0)
     metrics["isolated_node_ratio"] = round(isolated / len(nodes), 4)
+    
+    # FIX 7: Community balance score (how evenly distributed are nodes across communities)
+    communities = detect_behavioral_communities(nodes, edges)
+    if communities:
+        community_sizes = [len(ips) for ips in communities.values()]
+        avg_size = sum(community_sizes) / len(community_sizes)
+        # Gini coefficient-like metric (0 = perfect balance, 1 = all in one)
+        if avg_size > 0:
+            variance = sum((size - avg_size) ** 2 for size in community_sizes) / len(community_sizes)
+            max_variance = avg_size ** 2
+            balance = 1.0 - (variance / (max_variance + 0.01))
+        else:
+            balance = 1.0
+    else:
+        balance = 0.0
+    metrics["community_balance_score"] = round(max(0.0, min(balance, 1.0)), 2)
+    
+    # FIX 7: Relationship diversity score (how many different relationship types)
+    if edges:
+        rel_types = len(set(e.relationship_type for e in edges))
+        max_rel_types = 12  # Approximate max from _infer_relationship_type
+        rel_diversity = rel_types / max_rel_types
+    else:
+        rel_diversity = 0.0
+    metrics["relationship_diversity_score"] = round(rel_diversity, 2)
+    
+    # FIX 7: External dependency score (how much depends on external services)
+    external_services = [
+        n for n in nodes 
+        if infer_external_service(n, edges, nodes)["is_external_service"]
+    ]
+    if external_services:
+        # Count unique internal nodes that connect to external services
+        internal_consumers = set()
+        for ext_node in external_services:
+            consumers = [e.source_node for e in edges if e.target_node == ext_node.node_id]
+            internal_consumers.update(consumers)
+        
+        dependency = len(internal_consumers) / len(nodes)
+    else:
+        dependency = 0.0
+    metrics["external_dependency_score"] = round(dependency, 2)
+    
+    # FIX 7: Risk concentration score (how concentrated is risk in few nodes)
+    if nodes:
+        sorted_risks = sorted([n.risk_score for n in nodes], reverse=True)
+        top_20_pct = max(1, len(nodes) // 5)
+        top_risk = sum(sorted_risks[:top_20_pct])
+        total_risk = sum(sorted_risks)
+        if total_risk > 0:
+            concentration = top_risk / total_risk
+        else:
+            concentration = 0.0
+    else:
+        concentration = 0.0
+    metrics["risk_concentration_score"] = round(concentration, 2)
     
     return metrics
 

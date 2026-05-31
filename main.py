@@ -252,39 +252,113 @@ def _print_host_summary(elevated_hosts):
 
 
 def _print_graph_summary(graph_state, temporal_snapshots):
+    """FINAL HARDENED: Graph summary with all Layer 4 intelligence fixes."""
     print("\n" + "=" * 80)
-    print("GRAPH STATE SUMMARY")
+    print("GRAPH STATE SUMMARY (LAYER 4 HARDENED - FINAL)")
     print("=" * 80)
     
-    print(f"\n    Graph Nodes: {graph_state.node_count:,}")
-    print(f"    Graph Edges: {graph_state.edge_count:,}")
-    print(f"    Graph Density: {graph_state.graph_density:.6f}")
-    print(f"    Graph Risk Score: {graph_state.graph_risk_score:.1f}")
-    print(f"    Isolated Nodes: {graph_state.isolated_node_count:,}")
+    # === FIX 1+2: Basic Topology with Noise Suppression ===
+    print(f"\n    Graph Topology:")
+    print(f"      Nodes: {graph_state.node_count}")
+    print(f"      Edges: {graph_state.edge_count}")
+    print(f"      Density: {graph_state.graph_density:.6f}")
+    print(f"      Isolated: {graph_state.isolated_node_count}")
     
+    # === FIX 2: Behavioral Communities (with percentages) ===
+    communities = graph_state.metadata.get("communities", {})
+    if communities:
+        print(f"\n    Behavioral Communities:")
+        total_nodes = sum(len(ips) for ips in communities.values())
+        for community_name in sorted(communities.keys()):
+            ips = communities[community_name]
+            percentage = (len(ips) / total_nodes * 100) if total_nodes > 0 else 0
+            print(f"      {community_name}: {len(ips)} ({percentage:.1f}%)")
+    
+    # === FIX 3: Explainable Graph Risk Breakdown ===
+    print(f"\n    Graph Risk Score: {graph_state.graph_risk_score:.1f}")
+    risk_breakdown = graph_state.metadata.get("risk_breakdown", {})
+    if risk_breakdown:
+        print(f"    Risk Decomposition:")
+        total_risk = sum(risk_breakdown.values())
+        for component, value in sorted(risk_breakdown.items(), key=lambda x: x[1], reverse=True):
+            if total_risk > 0:
+                percentage = (value / total_risk * 100)
+                print(f"      - {component}: {value:.2f} ({percentage:.1f}%)")
+            else:
+                print(f"      - {component}: {value:.2f}")
+    
+    # === FIX 7: Enhanced Graph Health Metrics ===
+    health_metrics = {
+        "avg_node_risk": graph_state.metadata.get("avg_node_risk", 0.0),
+        "avg_edge_persistence": graph_state.metadata.get("avg_edge_persistence", 0.0),
+        "externality_ratio": graph_state.metadata.get("externality_ratio", 0.0),
+        "infrastructure_ratio": graph_state.metadata.get("infrastructure_ratio", 0.0),
+        "suspicious_edge_ratio": graph_state.metadata.get("suspicious_edge_ratio", 0.0),
+        "community_balance_score": graph_state.metadata.get("community_balance_score", 0.0),
+        "relationship_diversity_score": graph_state.metadata.get("relationship_diversity_score", 0.0),
+        "external_dependency_score": graph_state.metadata.get("external_dependency_score", 0.0),
+        "risk_concentration_score": graph_state.metadata.get("risk_concentration_score", 0.0),
+    }
+    
+    if any(health_metrics.values()):
+        print(f"\n    Graph Health Metrics:")
+        print(f"      Avg Node Risk: {health_metrics['avg_node_risk']:.2f}")
+        print(f"      Community Balance: {health_metrics['community_balance_score']:.2f}")
+        print(f"      Relationship Diversity: {health_metrics['relationship_diversity_score']:.2f}")
+        print(f"      External Dependency: {health_metrics['external_dependency_score']:.2f}")
+        print(f"      Risk Concentration: {health_metrics['risk_concentration_score']:.2f}")
+    
+    # === FIX 1: High Behavioral Importance (Noise Suppressed) ===
     if graph_state.high_centrality_nodes:
-        print("\n    High Centrality Nodes:")
+        print(f"\n    Top Behavioral Importance:")
         for node_ip in graph_state.high_centrality_nodes:
             print(f"      - {node_ip}")
     
+    # Relationship types
     if graph_state.relationship_types:
-        print("\n    Relationship Types:")
-        for rel_type in graph_state.relationship_types:
+        print(f"\n    Relationship Types Detected:")
+        for rel_type in sorted(graph_state.relationship_types)[:12]:
             print(f"      - {rel_type}")
     
-    print(f"\n    Temporal Snapshots: {len(temporal_snapshots):,} generated")
+    # === FIX 4: Event-Driven Snapshot Generation Statistics ===
+    print(f"\n    Snapshot Statistics:")
+    if temporal_snapshots:
+        quality_scores = [snap.metadata.get("quality_score", 0.0) for snap in temporal_snapshots]
+        quality_reasons = {}
+        for snap in temporal_snapshots:
+            reason = snap.metadata.get("quality_reason", "unknown")
+            quality_reasons[reason] = quality_reasons.get(reason, 0) + 1
+        
+        avg_quality = sum(quality_scores) / len(quality_scores) if quality_scores else 0.0
+        useful_count = quality_reasons.get("useful_snapshot", 0)
+        redundant_count = quality_reasons.get("redundant_snapshot", 0)
+        
+        print(f"      Total Snapshots: {len(temporal_snapshots)}")
+        print(f"      Meaningful Snapshots: {useful_count}")
+        print(f"      Redundant Snapshots: {redundant_count}")
+        print(f"      Average Quality Score: {avg_quality:.2f}")
+        print(f"      Quality Distribution:")
+        for reason in ["useful_snapshot", "moderate_snapshot", "sparse_snapshot", "redundant_snapshot", "empty_snapshot"]:
+            count = quality_reasons.get(reason, 0)
+            if count > 0:
+                print(f"        • {reason}: {count}")
+    else:
+        print(f"      Total Snapshots: 0")
     
-    if graph_state.metadata:
-        print(f"    Average Node Degree: {graph_state.metadata.get('avg_node_degree', 0):.2f}")
-        print(f"    Suspicious Edges: {graph_state.metadata.get('suspicious_edges', 0):,}")
-        communities = graph_state.metadata.get('communities', {})
-        if communities:
-            print(f"    Network Communities: {len(communities):,} detected")
+    # === FIX 8: Layer 5 Preparation (Lineage & Fingerprinting) ===
+    fingerprint = graph_state.metadata.get("graph_fingerprint", "")
+    if fingerprint:
+        print(f"\n    Layer 5 Readiness:")
+        print(f"      Graph Fingerprint: {fingerprint[:12]}...")
+        print(f"      Snapshot Lineage: Ready for diff engine")
+        print(f"      Graph Version: 1 (base state)")
     
+    # Replay metadata
     print(f"\n    Replay Metadata:")
-    print(f"      - Deterministic replay ordering enabled")
-    print(f"      - Sequence start: {graph_state.replay_sequence_start}")
-    print(f"      - Sequence end: {graph_state.replay_sequence_end}")
+    print(f"      Deterministic ordering: Enabled")
+    print(f"      Sequence range: {graph_state.replay_sequence_start} -> {graph_state.replay_sequence_end}")
+    
+    print()
 
 
 def _parse_timestamp(timestamp: str) -> datetime:
