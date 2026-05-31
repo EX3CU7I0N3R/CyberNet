@@ -15,6 +15,16 @@ from behavior.relationships import build_relationships
 from ingestion.parse import events_to_ndjson, extract_packet_info, parse_pcap
 from layer5 import Layer5Phase1Engine, detect_host_deltas, detect_relationship_deltas
 from layer6 import NarrativeManager, export_narratives
+from layer7 import (
+    TimelineManager,
+    export_activity_phases,
+    export_chapter_index,
+    export_host_timelines,
+    export_major_chapters,
+    export_replay_frames,
+    export_replay_index,
+    export_timeline_events,
+)
 from behavior.role_manager import role_to_display
 from stabilization_audit import write_stabilization_exports
 
@@ -217,7 +227,32 @@ def main():
     print(f"    [OK] Generated {len(investigation_narratives):,} investigation narratives\n")
     _print_investigation_narratives(investigation_narratives)
 
-    print("[*] STEP 10: Analysis summary\n")
+    print("[*] STEP 10: Building Layer 7 temporal reconstruction artifacts...")
+    timeline_manager = TimelineManager()
+    layer7_result = timeline_manager.build_timeline(
+        canonical_events=canonical_events,
+        enriched_flows=enriched_flows,
+        host_profiles=host_profiles,
+        relationships=relationships,
+        graph_state=graph_state,
+        hypotheses=hypotheses,
+        investigation_candidates=investigation_candidates,
+        investigation_narratives=investigation_narratives,
+    )
+    export_timeline_events(layer7_result.timeline_events, _artifact_path("timeline_events.ndjson"))
+    export_activity_phases(layer7_result.activity_phases, _artifact_path("activity_phases.ndjson"))
+    export_replay_frames(layer7_result.replay_frames, _artifact_path("replay_frames.ndjson"))
+    export_replay_index(layer7_result.replay_index, _artifact_path("replay_index.json"))
+    export_host_timelines(layer7_result.host_timelines, _artifact_path("host_timelines.ndjson"))
+    export_major_chapters(layer7_result.major_chapters, _artifact_path("major_chapters.ndjson"))
+    export_chapter_index(layer7_result.major_chapters, _artifact_path("chapter_index.json"))
+    print(f"    [OK] Generated {len(layer7_result.timeline_events):,} timeline events")
+    print(f"    [OK] Generated {len(layer7_result.activity_phases):,} activity phases")
+    print(f"    [OK] Generated {len(layer7_result.replay_frames):,} replay frames\n")
+    _print_timeline_summary(layer7_result)
+    _print_story_engine_summary(layer7_result.major_chapters)
+
+    print("[*] STEP 11: Analysis summary\n")
     _print_direction_summary(enriched_flows)
     _print_protocol_summary(enriched_flows)
     _print_suspicious_flows(suspicious_flows)
@@ -225,7 +260,7 @@ def main():
     _print_graph_summary(graph_state, temporal_snapshots)
     _print_stabilization_report(stabilization_report)
 
-    print("[*] STEP 11: Exporting analysis artifacts...")
+    print("[*] STEP 12: Exporting analysis artifacts...")
     if not args.no_csv:
         pd.DataFrame([event.model_dump() for event in canonical_events]).to_csv(
             _artifact_path("normalized_packets.csv"),
@@ -389,6 +424,29 @@ def _print_investigation_narratives(narratives):
         print("\n    Narrative Quality Score:")
         print(f"    {narrative.narrative_quality_score:.0f}")
         print()
+
+
+def _print_timeline_summary(layer7_result):
+    print("=" * 80)
+    print("TIMELINE SUMMARY")
+    print("=" * 80)
+    print(f"\n    Timeline Events: {len(layer7_result.timeline_events):,}")
+    print(f"    Activity Phases: {len(layer7_result.activity_phases):,}")
+    print(f"    Replay Frames: {len(layer7_result.replay_frames):,}")
+    print(f"    Replay Coverage: {layer7_result.replay_coverage:.2f}%")
+    print(f"    Event Compression Ratio: {layer7_result.event_compression_ratio:.2%}")
+    print()
+
+
+def _print_story_engine_summary(major_chapters):
+    print("=" * 80)
+    print("STORY ENGINE SUMMARY")
+    print("=" * 80)
+    print(f"\n    Major Chapters: {len(major_chapters):,}")
+    print("\n    Chapter Timeline:")
+    for index, chapter in enumerate(major_chapters, 1):
+        print(f"    {index}. {chapter.title}")
+    print()
 
 
 def _assign_timeline_indexes(events):
