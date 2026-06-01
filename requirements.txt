@@ -1,0 +1,7 @@
+pandas>=2.0
+pydantic>=2.0
+pyshark>=0.6
+scapy>=2.5
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9

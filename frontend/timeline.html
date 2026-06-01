@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CYBERNET | TIMELINE SUMMARY</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            background-color: #05070A;
+            background-image: 
+                radial-gradient(circle at 50% 50%, #0A141A 0%, #05070A 100%),
+                repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(0, 229, 255, 0.02) 1px, rgba(0, 229, 255, 0.02) 2px);
+            background-size: cover, 100% 4px;
+            overflow-x: hidden;
+            color: #dce4e5;
+        }
+
+        .glass-panel {
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(186, 201, 204, 0.1);
+        }
+
+        .neon-border {
+            border: 1px solid rgba(0, 229, 255, 0.4);
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.15);
+        }
+
+        .glow-cyan {
+            text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+
+        .animate-pulse-ring {
+            animation: pulse-ring 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        .flicker-effect:active {
+            opacity: 0.7;
+            filter: brightness(1.5);
+        }
+
+        .radial-timeline {
+            mask-image: radial-gradient(circle, black 40%, transparent 70%);
+        }
+
+        .event-node {
+            transition: all 0.3s ease;
+        }
+
+        .event-node:hover {
+            transform: scale(1.5);
+            filter: drop-shadow(0 0 8px #00e5ff);
+        }
+
+        /* Bracket ornaments */
+        .bracket-tl::before { content: ''; position: absolute; top: -2px; left: -2px; width: 10px; height: 10px; border-top: 2px solid #00e5ff; border-left: 2px solid #00e5ff; }
+        .bracket-br::after { content: ''; position: absolute; bottom: -2px; right: -2px; width: 10px; height: 10px; border-bottom: 2px solid #00e5ff; border-right: 2px solid #00e5ff; }
+
+        main[data-loading="true"] > * {
+            visibility: hidden;
+        }
+
+        main[data-loading="true"]::before {
+            content: "AWAITING_REPLAY_CONTEXT";
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00daf3;
+            font: 700 12px/16px "Space Grotesk", sans-serif;
+            letter-spacing: 0.1em;
+            border: 1px solid rgba(0, 229, 255, 0.35);
+            background: rgba(13, 21, 22, 0.88);
+            padding: 16px 24px;
+            z-index: 40;
+        }
+
+        .wrap-anywhere {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            min-width: 0;
+        }
+
+        .text-field {
+            white-space: normal;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            min-width: 0;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-low": "#151d1e",
+                        "secondary": "#c2c6d1",
+                        "on-error": "#690005",
+                        "surface-tint": "#00daf3",
+                        "on-primary-fixed": "#001f24",
+                        "on-surface-variant": "#bac9cc",
+                        "on-tertiary-fixed-variant": "#594400",
+                        "secondary-fixed-dim": "#c2c6d1",
+                        "tertiary-fixed-dim": "#f3bf26",
+                        "surface-variant": "#2e3638",
+                        "surface-container-high": "#242b2d",
+                        "primary": "#c3f5ff",
+                        "on-secondary-fixed-variant": "#42474f",
+                        "tertiary-container": "#fec931",
+                        "surface": "#0d1516",
+                        "on-secondary": "#2c3139",
+                        "surface-dim": "#0d1516",
+                        "inverse-on-surface": "#2a3233",
+                        "secondary-fixed": "#dee2ed",
+                        "on-surface": "#dce4e5",
+                        "on-primary": "#00363d",
+                        "inverse-primary": "#006875",
+                        "on-tertiary": "#3e2e00",
+                        "on-error-container": "#ffdad6",
+                        "on-secondary-fixed": "#171c23",
+                        "surface-container-highest": "#2e3638",
+                        "primary-fixed": "#9cf0ff",
+                        "on-tertiary-fixed": "#251a00",
+                        "primary-fixed-dim": "#00daf3",
+                        "on-primary-fixed-variant": "#004f58",
+                        "on-background": "#dce4e5",
+                        "on-primary-container": "#00626e",
+                        "outline-variant": "#3b494c",
+                        "error": "#ffb4ab",
+                        "on-tertiary-container": "#6f5500",
+                        "surface-container-lowest": "#080f11",
+                        "surface-container": "#192122",
+                        "secondary-container": "#474c54",
+                        "tertiary": "#ffeac0",
+                        "surface-bright": "#333a3c",
+                        "primary-container": "#00e5ff",
+                        "inverse-surface": "#dce4e5",
+                        "outline": "#849396",
+                        "on-secondary-container": "#b7bcc6",
+                        "background": "#0d1516",
+                        "tertiary-fixed": "#ffdf96",
+                        "error-container": "#93000a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "40px",
+                        "sm": "16px",
+                        "margin-mobile": "16px",
+                        "margin-desktop": "48px",
+                        "gutter": "20px",
+                        "base": "4px",
+                        "xs": "8px",
+                        "xl": "64px",
+                        "md": "24px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Space Grotesk"],
+                        "headline-lg-mobile": ["Space Grotesk"],
+                        "label-caps": ["Space Grotesk"],
+                        "headline-xl": ["Space Grotesk"],
+                        "headline-lg": ["Space Grotesk"],
+                        "body-md": ["Space Grotesk"],
+                        "title-md": ["Space Grotesk"],
+                        "mono-data": ["Space Grotesk"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.1em", "fontWeight": "700"}],
+                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "title-md": ["20px", {"lineHeight": "28px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                        "mono-data": ["14px", {"lineHeight": "20px", "fontWeight": "500"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="font-body-md text-on-surface selection:bg-primary-container selection:text-on-primary-container">
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-desktop h-16 bg-surface/80 backdrop-blur-md border-b border-outline-variant/30">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-primary" data-icon="terminal">terminal</span>
+<span class="font-headline-lg text-headline-lg font-bold text-primary tracking-tighter glitch-hover cursor-pointer">CYBERNET</span>
+</div>
+<nav class="hidden md:flex items-center gap-lg">
+<a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-all" href="/">iNVESTIGATION ANALYSIS</a>
+<a class="font-label-caps text-label-caps text-primary border-b-2 border-primary py-1" href="/frontend/timeline.html">TIMELINE_SUMMARY</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-all" href="/frontend/hosts.html">HOST_BEHAVIOUR</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-all" href="/frontend/reports.html">REPORTS</a>
+</nav>
+<div class="flex items-center gap-md">
+<button class="flex items-center gap-xs px-4 py-1.5 bg-primary/10 border border-primary/50 text-primary font-label-caps text-label-caps rounded-sm hover:bg-primary/20 active:scale-95 transition-all" onclick="location.href='/#select-pcap'">
+<span class="material-symbols-outlined text-[18px]" data-icon="security">security</span>
+<span>SELECT PCAP</span></button>
+<div class="flex gap-sm text-on-surface-variant">
+<a class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors" data-icon="notifications" href="/#notifications" title="Runtime logs and validation">notifications</a>
+<a class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors" data-icon="settings" href="/#settings" title="Replay settings">settings</a>
+</div>
+</div>
+</header>
+<main class="relative pt-24 pb-32 min-h-screen max-w-[1440px] mx-auto px-margin-desktop" data-loading="true">
+<!-- Holistic Temporal Grid (Background Visual) -->
+<div class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-40">
+<div class="relative w-[800px] h-[800px] flex items-center justify-center">
+<!-- Activity Phase View (Concentric Rings) -->
+<div class="absolute w-full h-full rounded-full border border-outline/10 animate-pulse-ring"></div>
+<div class="absolute w-4/5 h-4/5 rounded-full border border-primary/20"></div>
+<div class="absolute w-3/5 h-3/5 rounded-full border border-tertiary/20"></div>
+<div class="absolute w-2/5 h-2/5 rounded-full border border-error/20"></div>
+<!-- Crosshair Accents -->
+<div class="absolute w-full h-[1px] bg-outline/5"></div>
+<div class="absolute h-full w-[1px] bg-outline/5"></div>
+</div>
+</div>
+<!-- Hero Section: Event Density Heatmap & Ring Timeline -->
+<section class="relative z-10 grid grid-cols-12 gap-gutter items-center min-h-[614px]">
+<!-- Floating Left Panel -->
+<div class="col-span-3 space-y-md">
+<div class="glass-panel p-md rounded-xl bracket-tl relative">
+<h3 class="font-label-caps text-label-caps text-primary uppercase mb-base">System Status</h3>
+<div class="flex items-center gap-xs mb-md">
+<span class="w-3 h-3 rounded-full bg-error shadow-[0_0_8px_#ffb4ab] animate-pulse"></span>
+<span class="font-mono-data text-mono-data text-error uppercase">Active Breach</span>
+</div>
+<div class="space-y-sm">
+<div class="flex justify-between font-mono-data text-mono-data">
+<span class="text-outline">Packet Loss</span>
+<span class="text-on-surface">0.04%</span>
+</div>
+<div class="w-full bg-surface-variant h-1 rounded-full overflow-hidden">
+<div class="bg-primary w-[92%] h-full"></div>
+</div>
+<div class="flex justify-between font-mono-data text-mono-data">
+<span class="text-outline">Data Egress</span>
+<span class="text-on-surface">4.2 GB/s</span>
+</div>
+</div>
+</div>
+<div class="glass-panel p-md rounded-xl relative">
+<h3 class="font-label-caps text-label-caps text-outline uppercase mb-sm">Investigation Storyline</h3>
+<div class="space-y-md relative pl-4 border-l border-outline-variant/50">
+<div class="relative">
+<div class="absolute -left-[21px] top-1 w-2 h-2 rounded-full bg-primary shadow-[0_0_5px_#00e5ff]"></div>
+<h4 class="font-title-md text-title-md text-on-surface leading-none mb-1">Initial Entry</h4>
+<p class="text-xs text-outline">Compromised SQL endpoint detected at 14:02:11</p>
+</div>
+<div class="relative opacity-60">
+<div class="absolute -left-[21px] top-1 w-2 h-2 rounded-full bg-outline"></div>
+<h4 class="font-title-md text-title-md text-outline leading-none mb-1">Lateral Pivot</h4>
+<p class="text-xs text-outline">Internal VLAN_72 tunneling established.</p>
+</div>
+<div class="relative opacity-40">
+<div class="absolute -left-[21px] top-1 w-2 h-2 rounded-full bg-outline"></div>
+<h4 class="font-title-md text-title-md text-outline leading-none mb-1">Exfiltration</h4>
+<p class="text-xs text-outline">Encrypted storage cluster egress start.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Central Heatmap Explorer -->
+<div class="col-span-6 relative flex flex-col items-center">
+<div class="relative w-[500px] h-[500px]">
+<!-- Heatmap Center -->
+<div class="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-primary/10 rounded-full flex items-center justify-center">
+<div class="text-center">
+<div class="font-headline-xl text-headline-xl text-primary glow-cyan leading-tight tracking-tighter">1.24TB</div>
+<div class="font-label-caps text-label-caps text-outline tracking-widest">THREAT_PAYLOAD</div>
+</div>
+</div>
+<!-- Timeline Event Explorer (Dots on Ring) -->
+<svg class="absolute inset-0 w-full h-full -rotate-90">
+<circle class="text-outline/10" cx="250" cy="250" fill="none" r="240" stroke="currentColor" stroke-width="1"></circle>
+<!-- Pulsing Dots -->
+<circle class="animate-pulse-ring" cx="250" cy="10" fill="#00e5ff" r="6"></circle>
+<circle cx="490" cy="250" fill="#00e5ff" opacity="0.5" r="4"></circle>
+<circle class="animate-pulse" cx="250" cy="490" fill="#fec931" r="5"></circle>
+<circle cx="10" cy="250" fill="#00e5ff" opacity="0.3" r="3"></circle>
+</svg>
+<!-- Arc-based Chapters -->
+<div class="absolute inset-0 flex items-center justify-center">
+<div class="w-full h-full rounded-full border-[12px] border-outline/5 border-t-primary/40 border-r-primary/10 border-b-tertiary/20"></div>
+</div>
+</div>
+<div class="mt-md text-center">
+<span class="font-mono-data text-mono-data text-outline">SESSION_ELAPSED: </span>
+<span class="font-headline-lg text-headline-lg font-bold text-on-surface">--:--:--</span>
+</div>
+</div>
+<!-- Right Analytics Panel -->
+<div class="col-span-3 space-y-md">
+<div class="glass-panel p-md rounded-xl bracket-br relative">
+<h3 class="font-label-caps text-label-caps text-primary uppercase mb-md">Replay Analytics</h3>
+<div class="space-y-md">
+<div class="group cursor-pointer hover:bg-surface-bright/20 p-2 rounded transition-all">
+<div class="flex items-center gap-sm mb-1">
+<span class="material-symbols-outlined text-primary text-sm">security_update_warning</span>
+<span class="font-title-md text-title-md text-on-surface">Vector Scan 01</span>
+</div>
+<div class="font-mono-data text-mono-data text-outline">ID: SQL_XSS_01 | Prob: 0.88</div>
+</div>
+<div class="group cursor-pointer hover:bg-surface-bright/20 p-2 rounded transition-all">
+<div class="flex items-center gap-sm mb-1">
+<span class="material-symbols-outlined text-outline text-sm">hub</span>
+<span class="font-title-md text-title-md text-on-surface">Host Mapping</span>
+</div>
+<div class="font-mono-data text-mono-data text-outline">Nodes: 14 | Active: 2</div>
+</div>
+</div>
+</div>
+<div class="glass-panel p-md rounded-xl relative overflow-hidden">
+<div class="absolute top-0 right-0 p-2 opacity-20">
+<span class="material-symbols-outlined">analytics</span>
+</div>
+<h3 class="font-label-caps text-label-caps text-outline uppercase mb-sm">Event Stream</h3>
+<div class="h-40 overflow-y-auto space-y-xs pr-2 scrollbar-hide">
+<div class="text-[10px] font-mono-data py-1 border-b border-outline-variant/20">
+<span class="text-primary">[14:02:11]</span> CONN_ESTABLISHED SRC: 10.0.0.45 -&gt; TARGET
+                        </div>
+<div class="text-[10px] font-mono-data py-1 border-b border-outline-variant/20">
+<span class="text-error">[14:05:04]</span> ANOMALOUS_TRAFFIC VOL: 4.2 GB/S DETECTED
+                        </div>
+<div class="text-[10px] font-mono-data py-1 border-b border-outline-variant/20">
+<span class="text-outline">[14:07:33]</span> HEARTBEAT_LOST NODE_EXT_99_A
+                        </div>
+<div class="text-[10px] font-mono-data py-1 border-b border-outline-variant/20">
+<span class="text-primary">[14:08:12]</span> ENCRYPTION_ROUTINE_INITIATED
+                        </div>
+</div>
+</div>
+</div>
+</section>
+<!-- Bento Grid Timeline Explorer (Lower Section) -->
+<section class="mt-xl grid grid-cols-4 gap-md">
+<div class="glass-panel rounded-xl p-md border-l-4 border-l-primary flex items-center justify-between">
+<div>
+<h4 class="font-label-caps text-label-caps text-outline uppercase">Initial Activity</h4>
+<div class="text-headline-lg font-bold">14:02</div>
+</div>
+<span class="material-symbols-outlined text-primary-container text-4xl opacity-50">login</span>
+</div>
+<div class="glass-panel rounded-xl p-md border-l-4 border-l-primary flex items-center justify-between">
+<div>
+<h4 class="font-label-caps text-label-caps text-outline uppercase">Relationship Formation</h4>
+<div class="text-headline-lg font-bold">14:15</div>
+</div>
+<span class="material-symbols-outlined text-primary-container text-4xl opacity-50">diversity_2</span>
+</div>
+<div class="glass-panel rounded-xl p-md border-l-4 border-l-primary-fixed-dim flex items-center justify-between">
+<div>
+<h4 class="font-label-caps text-label-caps text-outline uppercase">Persistent Comms</h4>
+<div class="text-headline-lg font-bold">14:48</div>
+</div>
+<span class="material-symbols-outlined text-primary-container text-4xl opacity-50">router</span>
+</div>
+<div class="glass-panel rounded-xl p-md border-l-4 border-l-error flex items-center justify-between">
+<div>
+<h4 class="font-label-caps text-label-caps text-outline uppercase">Investigation Priority</h4>
+<div class="text-headline-lg font-bold">CRITICAL</div>
+</div>
+<span class="material-symbols-outlined text-error text-4xl opacity-50">priority_high</span>
+</div>
+</section>
+</main>
+<script>
+(() => {
+    const API_BASE = window.REPLAY_API_BASE || '';
+
+    const api = async (path, options = {}) => {
+        const response = await fetch(API_BASE + path, { headers: { Accept: 'application/json', ...(options.headers || {}) }, ...options });
+        if (!response.ok) throw new Error(`${path} returned ${response.status}`);
+        return response.json();
+    };
+
+    const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    }[char]));
+
+    const formatTime = timestamp => new Date(timestamp).toISOString().slice(11, 19);
+
+    const severityClass = severity => ['HIGH', 'CRITICAL'].includes(String(severity).toUpperCase())
+        ? 'text-error border-error/40'
+        : 'text-primary border-primary/30';
+
+    async function renderTimelineSummary() {
+        const [session, chapters, events, hypotheses, candidates] = await Promise.all([
+            api('/api/replay/session', { method: 'POST' }),
+            api('/api/chapters'),
+            api('/api/events'),
+            api('/api/hypotheses'),
+            api('/api/candidates')
+        ]);
+        const main = document.querySelector('main');
+        const highEvents = events.filter(event => ['HIGH', 'CRITICAL'].includes(String(event.severity).toUpperCase()));
+        const panel = document.createElement('section');
+        panel.className = 'relative z-20 glass-panel rounded-xl border border-primary/30 p-md mb-lg grid grid-cols-2 md:grid-cols-6 gap-md';
+        panel.innerHTML = `${summaryCard('REPLAY_FRAMES', session.frame_count, 'text-primary')}${summaryCard('DURATION', `${Math.round(session.duration)}s`, 'text-on-surface')}${summaryCard('TOTAL_EVENTS', events.length, 'text-primary')}${summaryCard('HIGH_SIGNAL', highEvents.length, 'text-error')}${summaryCard('HYPOTHESES', hypotheses.length, 'text-tertiary')}${summaryCard('CANDIDATES', candidates.length, 'text-primary')}`;
+        const chapterPanel = document.createElement('section');
+        chapterPanel.className = 'relative z-20 glass-panel rounded-xl border border-outline-variant/40 p-md mb-lg';
+        chapterPanel.innerHTML = `<div class="flex items-center justify-between mb-md"><h2 class="font-title-lg text-title-lg text-primary">CHAPTER_RAIL</h2><span class="font-mono-data text-mono-data text-outline">${chapters.length} CHAPTERS</span></div><div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-sm">${chapters.map(chapter => `<a href="/?time=${encodeURIComponent(chapter.start_time)}" class="border-l-2 ${severityClass(chapter.severity)} bg-surface-container-low/60 p-sm hover:bg-surface-container min-w-0"><div class="flex justify-between gap-sm min-w-0"><span class="font-label-caps text-label-caps text-field">${escapeHtml(chapter.title).toUpperCase().replaceAll(' ', '_')}</span><span class="font-mono-data text-mono-data text-outline">${escapeHtml(chapter.severity)}</span></div><div class="font-body-sm text-on-surface-variant mt-xs text-field">${formatTime(chapter.start_time)} - ${formatTime(chapter.end_time)} | ${chapter.event_count} events | ${chapter.hosts.length} hosts</div><div class="font-body-sm text-outline mt-xs text-field">${escapeHtml(chapter.description)}</div></a>`).join('')}</div>`;
+        const eventPanel = document.createElement('section');
+        eventPanel.className = 'relative z-20 glass-panel rounded-xl border border-outline-variant/40 p-md mb-lg';
+        eventPanel.innerHTML = `<div class="flex items-center justify-between mb-md"><h2 class="font-title-lg text-title-lg text-primary">FILTERABLE_EVENT_STREAM</h2><span class="font-mono-data text-mono-data text-outline">${events.length} EVENTS</span></div><div class="grid grid-cols-1 md:grid-cols-4 gap-sm mb-md"><select class="bg-surface-container-low border border-outline-variant/40 text-on-surface p-2" id="severity-filter"><option value="">ALL_SEVERITY</option><option>INFO</option><option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option></select><input class="md:col-span-3 bg-surface-container-low border border-outline-variant/40 text-on-surface p-2" id="event-search" placeholder="Filter by type, host, related host, description"></div><div class="space-y-1 max-h-[520px] overflow-y-auto" id="event-table">${eventRows(events)}</div>`;
+        const signalPanel = document.createElement('section');
+        signalPanel.className = 'relative z-20 glass-panel rounded-xl border border-primary/20 p-md mb-lg';
+        signalPanel.innerHTML = '<h2 class="font-title-lg text-title-lg text-primary mb-sm">SIGNAL_EXPLANATION</h2><p class="font-body-md text-on-surface-variant">This PCAP contains many benign operational events, especially TLS sessions and relationship creation. The investigation signal is concentrated in the small number of high-severity beaconing and hypothesis events, so analysts should use signal filters before drilling into replay frames.</p>';
+        main.replaceChildren(panel, chapterPanel, eventPanel, signalPanel);
+        const renderFilteredEvents = () => {
+            const severity = document.getElementById('severity-filter').value;
+            const query = document.getElementById('event-search').value.toLowerCase();
+            const filtered = events.filter(event => (!severity || event.severity === severity) && JSON.stringify(event).toLowerCase().includes(query));
+            document.getElementById('event-table').innerHTML = eventRows(filtered);
+        };
+        document.getElementById('severity-filter').addEventListener('change', renderFilteredEvents);
+        document.getElementById('event-search').addEventListener('input', renderFilteredEvents);
+        main.removeAttribute('data-loading');
+    }
+
+    function summaryCard(label, value, color) {
+        return `<div><div class="font-label-caps text-label-caps text-outline">${label}</div><div class="font-headline-lg text-headline-lg ${color}">${value}</div></div>`;
+    }
+
+    function eventRows(events) {
+        return events.slice(-120).reverse().map(event => `<a href="/?time=${encodeURIComponent(event.timestamp)}" class="block border-l-2 ${severityClass(event.severity)} bg-surface-container-low/60 p-sm hover:bg-surface-container min-w-0"><div class="grid grid-cols-1 md:grid-cols-5 gap-sm min-w-0"><span class="font-mono-data text-mono-data text-outline">${formatTime(event.timestamp)}</span><span class="font-label-caps text-label-caps text-primary text-field">${escapeHtml(event.severity)}</span><span class="font-label-caps text-label-caps text-field">${escapeHtml(event.type).toUpperCase()}</span><span class="font-mono-data text-mono-data text-tertiary text-field">${escapeHtml(event.host || 'UNKNOWN')}</span><span class="font-body-sm text-on-surface-variant text-field">${escapeHtml(event.description || event.related_hosts?.join(', ') || 'Observed replay event')}</span></div></a>`).join('') || '<div class="font-body-sm text-outline">No events match the active filters.</div>';
+    }
+
+    renderTimelineSummary().catch(error => {
+        const main = document.querySelector('main');
+        const panel = document.createElement('section');
+        panel.className = 'relative z-20 glass-panel rounded-xl border border-error/40 p-md mb-lg text-error font-mono-data text-mono-data';
+        panel.textContent = `REPLAY_BACKEND_OFFLINE: ${error.message}`;
+        main.replaceChildren(panel);
+        main.removeAttribute('data-loading');
+    });
+})();
+</script>
+</body></html>

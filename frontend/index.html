@@ -1,0 +1,1143 @@
+<!DOCTYPE html><html class="dark" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>CYBER OPS COMMAND | SECTOR_7_G</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!-- Adding OrbitControls from CDN -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+        :root {
+            --scanline-color: rgba(0, 229, 255, 0.015);
+            --primary-glow: rgba(0, 229, 255, 0.4);
+        }
+        body {
+            background-color: #05070A;
+            color: #dce4e5;
+            overflow: hidden;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        /* Ambient Effects */
+        .scanlines {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, transparent 50%, var(--scanline-color) 51%);
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 100;
+        }
+        .noise-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.02;
+            pointer-events: none;
+            z-index: 99;
+        }
+
+        .glass-panel {
+            background: rgba(8, 12, 17, 0.85);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(132, 147, 150, 0.08);
+        }
+
+        .tactical-border {
+            border: 1px solid rgba(0, 229, 255, 0.15);
+            position: relative;
+        }
+        .tactical-border::before, .tactical-border::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-color: rgba(0, 229, 255, 0.4);
+            border-style: solid;
+        }
+        .tactical-border::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+        .tactical-border::after { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+
+        .flicker-entrance {
+            animation: flicker 0.6s ease-out forwards;
+            opacity: 0;
+        }
+        @keyframes flicker {
+            0% { opacity: 0; filter: brightness(3); }
+            10% { opacity: 0.8; filter: brightness(2); }
+            15% { opacity: 0.4; }
+            100% { opacity: 1; }
+        }
+
+        .glitch-hover:hover {
+            animation: glitch 0.3s cubic-bezier(.25,.46,.45,.94) both infinite;
+            text-shadow: 2px 0 #ff00c1, -2px 0 #00fff9;
+        }
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-1px, 1px); }
+            40% { transform: translate(-1px, -1px); }
+            60% { transform: translate(1px, 1px); }
+            80% { transform: translate(1px, -1px); }
+            100% { transform: translate(0); }
+        }
+
+        .chapter-segment {
+            transition: all 0.2s ease;
+            background: rgba(25, 33, 34, 0.5);
+        }
+        .chapter-segment:hover {
+            background: rgba(0, 229, 255, 0.1);
+            border-top-color: #00e5ff;
+        }
+        .chapter-active {
+            background: rgba(0, 229, 255, 0.05);
+            border-top: 2px solid #00e5ff;
+        }
+
+        .event-pip {
+            position: absolute;
+            bottom: 0;
+            width: 2px;
+            height: 12px;
+            background: #00e5ff;
+            box-shadow: 0 0 8px #00e5ff;
+        }
+
+        .terminal-glow {
+            text-shadow: 0 0 5px rgba(0, 229, 255, 0.5);
+        }
+
+        .scrolling-feed {
+            mask-image: linear-gradient(to top, black 80%, transparent 100%);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #00e5ff22; }
+
+        #three-canvas-container canvas {
+            display: block;
+        }
+
+        .hud-overlay {
+            pointer-events: none;
+            background: radial-gradient(circle at center, transparent 30%, rgba(5, 7, 10, 0.4) 100%);
+        }
+
+        .wrap-anywhere {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            min-width: 0;
+        }
+
+        .text-field {
+            white-space: normal;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            min-width: 0;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error-container": "#93000a",
+                        "inverse-primary": "#006875",
+                        "on-tertiary": "#3e2e00",
+                        "surface-variant": "#2e3638",
+                        "on-background": "#dce4e5",
+                        "secondary-fixed-dim": "#c2c6d1",
+                        "primary-fixed": "#9cf0ff",
+                        "secondary-container": "#474c54",
+                        "surface-container-highest": "#2e3638",
+                        "outline": "#849396",
+                        "on-surface": "#dce4e5",
+                        "surface-container-low": "#151d1e",
+                        "primary": "#c3f5ff",
+                        "primary-container": "#00e5ff",
+                        "tertiary-fixed-dim": "#f3bf26",
+                        "secondary": "#c2c6d1",
+                        "on-tertiary-container": "#6f5500",
+                        "inverse-surface": "#dce4e5",
+                        "outline-variant": "#3b494c",
+                        "on-secondary-fixed-variant": "#42474f",
+                        "on-secondary-container": "#b7bcc6",
+                        "on-primary": "#00363d",
+                        "on-primary-container": "#00626e",
+                        "on-error": "#690005",
+                        "on-secondary": "#2c3139",
+                        "surface": "#0d1516",
+                        "on-surface-variant": "#bac9cc",
+                        "surface-container-high": "#242b2d",
+                        "background": "#0d1516",
+                        "surface-container-lowest": "#080f11",
+                        "on-tertiary-fixed-variant": "#594400",
+                        "on-primary-fixed-variant": "#004f58",
+                        "on-secondary-fixed": "#171c23",
+                        "surface-tint": "#00daf3",
+                        "on-primary-fixed": "#001f24",
+                        "secondary-fixed": "#dee2ed",
+                        "surface-dim": "#0d1516",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary-fixed": "#251a00",
+                        "tertiary-fixed": "#ffdf96",
+                        "error": "#ffb4ab",
+                        "tertiary": "#ffeac0",
+                        "tertiary-container": "#fec931",
+                        "surface-container": "#192122",
+                        "surface-bright": "#333a3c",
+                        "inverse-on-surface": "#2a3233",
+                        "primary-fixed-dim": "#00daf3"
+                    },
+                    "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                    "spacing": { "sm": "16px", "lg": "40px", "margin-mobile": "16px", "margin-desktop": "48px", "xl": "64px", "md": "24px", "gutter": "20px", "base": "4px", "xs": "8px" },
+                    "fontFamily": {
+                        "body-lg": ["Space Grotesk"], "mono-data": ["Space Grotesk"], "headline-lg-mobile": ["Space Grotesk"],
+                        "body-md": ["Space Grotesk"], "title-md": ["Space Grotesk"], "headline-xl": ["Space Grotesk"],
+                        "headline-lg": ["Space Grotesk"], "label-caps": ["Space Grotesk"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "mono-data": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "title-md": ["20px", {"lineHeight": "28px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.1em", "fontWeight": "700"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-surface text-on-surface overflow-hidden">
+<div class="scanlines"></div>
+<div class="noise-overlay"></div>
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-desktop h-16 bg-surface/80 backdrop-blur-md border-b border-outline-variant/30">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-primary" data-icon="terminal">terminal</span>
+<span class="font-headline-lg text-headline-lg font-bold text-primary tracking-tighter glitch-hover cursor-pointer">CYBERNET</span>
+</div>
+<nav class="hidden md:flex items-center gap-lg">
+<a class="font-label-caps text-label-caps text-primary border-b-2 border-primary py-1" href="/">iNVESTIGATION ANALYSIS</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-all" href="/frontend/timeline.html">TIMELINE_SUMMARY</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-all" href="/frontend/hosts.html">HOST_BEHAVIOUR</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-all" href="/frontend/reports.html">REPORTS</a>
+</nav>
+<div class="flex items-center gap-md">
+
+<button class="flex items-center gap-xs px-4 py-1.5 bg-primary/10 border border-primary/50 text-primary font-label-caps text-label-caps rounded-sm hover:bg-primary/20 active:scale-95 transition-all" id="session-status">
+<span class="material-symbols-outlined text-[18px]" data-icon="security">security</span>
+<span id="session-status-label">SELECT PCAP</span></button>
+<input accept=".pcap,.pcapng,.cap" class="hidden" id="pcap-input" type="file">
+<div class="flex gap-sm text-on-surface-variant">
+<span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors" data-icon="notifications" id="notifications-button" title="Runtime logs and validation">notifications</span>
+
+<span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors" data-icon="settings" id="settings-button" title="Replay settings">settings</span>
+</div>
+</div>
+</header>
+<aside class="fixed top-[76px] right-12 z-[100] w-[430px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-120px)] overflow-y-auto hidden glass-panel border border-primary/30 bg-black/85 backdrop-blur-md shadow-[0_0_28px_rgba(0,229,255,0.12)]" id="utility-drawer">
+<div class="flex items-start justify-between gap-3 p-4 border-b border-outline-variant/30">
+<div>
+<div class="font-label-caps text-[10px] text-primary" id="utility-type">UTILITY</div>
+<h2 class="font-title-md text-title-md text-on-surface" id="utility-title">Control panel</h2>
+</div>
+<button class="text-outline hover:text-primary" id="utility-close"><span class="material-symbols-outlined">close</span></button>
+</div>
+<div class="p-4 space-y-3 font-body-sm text-on-surface-variant" id="utility-body"></div>
+</aside>
+<!-- Main Content Layout -->
+<main class="flex h-screen pt-16 pb-[240px] overflow-hidden relative">
+<!-- Center: 3D SPATIAL NETWORK SPACE -->
+<section class="relative flex-grow overflow-hidden bg-black flicker-entrance" id="three-canvas-container">
+<div class="absolute inset-0 hud-overlay z-10 pointer-events-none"></div>
+<!-- HUD ELEMENTS -->
+<div class="absolute top-sm left-sm z-30 font-mono-data text-[10px] text-primary/60 space-y-1 pointer-events-none p-4">
+<div class="flex items-center gap-2"><span class="w-2 h-2 bg-primary"></span> SPATIAL_RESOLUTION: 0.001mm</div>
+<div class="" id="coord-x">X_VIEW: 0.00</div>
+<div class="" id="coord-y">Y_VIEW: 50.00</div>
+<div class="" id="depth">Z_DEPTH: 150.00m</div>
+</div>
+<div class="absolute top-sm right-sm z-30 flex gap-xs">
+<button class="px-3 py-1.5 bg-black/40 backdrop-blur-md border border-primary/30 text-primary font-label-caps text-[10px] hover:bg-primary/20 transition-all rounded-sm flex items-center gap-1 pointer-events-auto" id="reset-camera">
+<span class="material-symbols-outlined text-[14px]" data-icon="view_in_ar">view_in_ar</span>
+                SYNC_VIEW
+            </button>
+</div>
+<div class="absolute top-[76px] right-sm z-30 pointer-events-none text-right space-y-2 font-mono-data hidden" id="candidate-strip">
+<div><span class="font-label-caps text-[9px] text-outline block">TOP_HOST</span><span class="text-primary text-lg" id="strip-host">--</span></div>
+<div><span class="font-label-caps text-[9px] text-outline block">ROLE</span><span class="text-on-surface" id="strip-role">--</span></div>
+<div><span class="font-label-caps text-[9px] text-outline block">RISK</span><span class="text-error" id="strip-risk">--</span></div>
+<div><span class="font-label-caps text-[9px] text-outline block">CONFIDENCE</span><span class="text-primary" id="strip-confidence">--</span></div>
+<div><span class="font-label-caps text-[9px] text-outline block">DESTINATION</span><span class="text-tertiary" id="strip-destination">--</span></div>
+<div><span class="font-label-caps text-[9px] text-outline block">PRIORITY</span><span class="text-on-surface" id="strip-priority">--</span></div>
+</div>
+<!-- NEW: Live Event Feed -->
+<div class="absolute bottom-xs left-sm z-30 w-72 h-48 pointer-events-none scrolling-feed flex flex-col justify-end">
+<div class="mb-2 flex gap-1 pointer-events-auto hidden" id="feed-filter">
+<button class="px-2 py-1 border border-primary/50 bg-primary/20 text-primary font-label-caps text-[9px]" data-feed-filter="all">ALL</button>
+<button class="px-2 py-1 border border-outline-variant/40 text-outline hover:text-primary font-label-caps text-[9px]" data-feed-filter="signal">SIGNAL</button>
+<button class="px-2 py-1 border border-outline-variant/40 text-outline hover:text-primary font-label-caps text-[9px]" data-feed-filter="high">HIGH+</button>
+</div>
+<div class="bg-black/20 p-2 font-mono-data text-[10px] space-y-1 overflow-hidden" id="event-feed-container"><div class="text-primary/70 terminal-glow flex gap-2"><span>[SYSTEM]</span> <span class="text-primary">CONNECTING_REPLAY_BACKEND</span></div></div>
+</div>
+<aside class="fixed top-24 right-sm bottom-[260px] z-[80] w-96 max-w-[calc(100%-2rem)] overflow-y-auto glass-panel border border-primary/30 bg-black/80 backdrop-blur-md p-4 hidden pointer-events-auto" id="inspection-drawer">
+<div class="flex items-start justify-between gap-3 mb-3">
+<div>
+<div class="font-label-caps text-[10px] text-primary" id="drawer-type">INSPECTION</div>
+<h2 class="font-title-md text-title-md text-on-surface" id="drawer-title">Select graph object</h2>
+</div>
+<button class="text-outline hover:text-primary" id="drawer-close"><span class="material-symbols-outlined">close</span></button>
+</div>
+<div class="space-y-3 font-body-sm text-on-surface-variant" id="drawer-body"></div>
+</aside>
+<div class="absolute bottom-sm right-sm z-30 pointer-events-none flex flex-col items-end gap-2 p-sm">
+<div class="w-24 h-24 border border-primary/20 rounded-full flex items-center justify-center opacity-30 relative overflow-hidden">
+<div class="absolute inset-0 bg-[radial-gradient(circle,rgba(0,229,255,0.1)_0%,transparent_70%)]"></div>
+<span class="material-symbols-outlined text-[32px] text-primary animate-pulse" data-icon="radar">radar</span>
+</div>
+<div class="text-right">
+<div class="font-label-caps text-[10px] text-primary">AWAITING_CAPTURE</div>
+<div class="font-mono-data text-[9px] text-outline">SELECT_PCAP_TO_START</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom: FORENSIC TIMELINE (NLE Style) -->
+<footer class="fixed bottom-0 w-full h-[240px] z-50 glass-panel border-t border-primary/30 shadow-[0_-10px_40px_rgba(0,0,0,0.8)] flex flex-col" id="replay-footer">
+<!-- Playback Controls -->
+<div class="flex justify-between items-center px-margin-desktop py-4 bg-surface-container-low/50">
+<div class="flex items-center gap-md">
+<div class="flex gap-sm">
+<button class="hover:text-primary transition-all" id="first-frame"><span class="material-symbols-outlined" data-icon="first_page">first_page</span></button>
+<button class="w-12 h-12 rounded-full bg-primary/10 border border-primary/40 flex items-center justify-center hover:bg-primary/20 hover:scale-105 transition-all text-primary shadow-[0_0_20px_rgba(0,229,255,0.2)]" id="play-toggle">
+<span class="material-symbols-outlined text-[32px]" data-icon="play_arrow" id="play-icon" style="font-variation-settings: &quot;FILL&quot; 1;">play_arrow</span>
+</button>
+<button class="hover:text-primary transition-all" id="last-frame"><span class="material-symbols-outlined" data-icon="last_page">last_page</span></button>
+</div>
+<div class="flex gap-2 p-1 bg-surface-container rounded-sm border border-outline-variant/30">
+<button class="px-2 py-0.5 font-label-caps text-[10px] text-outline hover:text-white" data-speed="1">1X</button>
+<button class="px-2 py-0.5 font-label-caps text-[10px] text-primary bg-primary/20 rounded-sm" data-speed="4">4X</button>
+<button class="px-2 py-0.5 font-label-caps text-[10px] text-outline hover:text-white" data-speed="16">16X</button>
+</div>
+</div>
+<div class="flex gap-xl items-center font-mono-data">
+<div class="text-right">
+<span class="text-[9px] text-outline block">ELAPSED_SESSION</span>
+<span class="text-primary text-3xl font-bold tracking-tighter" id="main-time">--:--:--</span>
+</div>
+<div class="h-10 w-px bg-outline-variant/30"></div>
+<div class="text-right">
+<span class="text-[9px] text-outline block">TOTAL_STREAM</span>
+<span class="text-on-surface text-3xl font-bold tracking-tighter opacity-50" id="total-time">--:--:--</span>
+</div>
+</div>
+</div>
+<!-- NLE Scrubber Area -->
+<div class="flex-grow flex flex-col px-margin-desktop pb-6 pt-2">
+<!-- Chapters Track -->
+<div class="flex h-10 border-b border-outline-variant/20 mb-2" id="chapter-track"></div>
+<!-- Scrubber Track -->
+<div class="relative w-full h-16 bg-black/40 border border-outline-variant/30 rounded-sm group overflow-hidden" id="scrubber-track">
+<!-- Grid Lines -->
+<div class="absolute inset-0 flex pointer-events-none opacity-10">
+<div class="flex-grow border-r border-white/40"></div><div class="flex-grow border-r border-white/40"></div><div class="flex-grow border-r border-white/40"></div><div class="flex-grow border-r border-white/40"></div><div class="flex-grow border-r border-white/40"></div><div class="flex-grow border-r border-white/40"></div><div class="flex-grow border-r border-white/40"></div><div class="flex-grow border-r border-white/40"></div>
+</div>
+<!-- Event Pips -->
+<!-- Waveform Placeholder (Visual Polish) -->
+<div class="absolute bottom-0 left-0 w-full h-full opacity-5 pointer-events-none flex items-end">
+<div class="w-full h-1/2 bg-gradient-to-t from-primary to-transparent" style="clip-path: polygon(0 100%, 5% 40%, 10% 80%, 15% 20%, 20% 90%, 25% 10%, 30% 60%, 35% 30%, 40% 100%, 45% 20%, 50% 50%, 55% 10%, 60% 80%, 65% 40%, 70% 90%, 75% 20%, 80% 60%, 85% 30%, 90% 100%, 95% 40%, 100% 100%);"></div>
+</div>
+<!-- Scrubber Handle -->
+<div class="absolute top-0 left-0 h-full bg-primary/5 border-r-2 border-primary-container z-10 shadow-[0_0_15px_rgba(0,229,255,0.4)]" id="progress-bar" style="width: 0%;">
+<div class="absolute top-[-4px] right-[-6px] w-3 h-3 bg-primary rotate-45"></div>
+</div>
+<input class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30" id="timeline-range" max="100" min="0" type="range" value="0">
+</div>
+</div>
+</footer>
+<script>
+    const API_BASE = window.REPLAY_API_BASE || '';
+    const container = document.getElementById('three-canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x05070A);
+    scene.fog = new THREE.FogExp2(0x003366, 0.008);
+
+    const camera = new THREE.PerspectiveCamera(65, container.clientWidth / container.clientHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    container.appendChild(renderer.domElement);
+
+    camera.position.set(0, 50, 150);
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.screenSpacePanning = true;
+    controls.maxDistance = 500;
+    controls.minDistance = 20;
+
+    scene.add(new THREE.AmbientLight(0x404040, 2));
+    const pointLight = new THREE.PointLight(0x00e5ff, 2, 800);
+    pointLight.position.set(50, 150, 50);
+    scene.add(pointLight);
+
+    const graphGroup = new THREE.Group();
+    scene.add(graphGroup);
+    const nodeSprites = [];
+    const edgeLines = [];
+    const nodePositions = new Map();
+    const nodesById = new Map();
+    const raycaster = new THREE.Raycaster();
+    raycaster.params.Line.threshold = 6;
+    const pointer = new THREE.Vector2();
+    const state = {
+        session: null,
+        frames: new Map(),
+        events: [],
+        chapters: [],
+        narratives: [],
+        summary: null,
+        candidates: [],
+        hypotheses: [],
+        relationships: [],
+        hosts: [],
+        feedFilter: 'all',
+        currentFrameId: 1,
+        frameCount: 0,
+        duration: 0,
+        playing: false,
+        speed: 4,
+        lastStep: 0,
+        pendingFrame: false,
+        activeHost: null
+    };
+
+    const starGeo = new THREE.BufferGeometry();
+    const starCount = 1200;
+    const starArr = new Float32Array(starCount * 3);
+    for (let i = 0; i < starCount * 3; i++) starArr[i] = (Math.random() - 0.5) * 800;
+    starGeo.setAttribute('position', new THREE.BufferAttribute(starArr, 3));
+    const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0x00e5ff, size: 0.8, transparent: true, opacity: 0.15 }));
+    scene.add(stars);
+
+    const feedContainer = document.getElementById('event-feed-container');
+    const range = document.getElementById('timeline-range');
+    const progress = document.getElementById('progress-bar');
+    const timeDisplay = document.getElementById('main-time');
+    const totalTimeDisplay = document.getElementById('total-time');
+    const playIcon = document.getElementById('play-icon');
+    const chapterTrack = document.getElementById('chapter-track');
+    const scrubberTrack = document.getElementById('scrubber-track');
+    const sessionStatusLabel = document.getElementById('session-status-label');
+    const drawer = document.getElementById('inspection-drawer');
+    const drawerType = document.getElementById('drawer-type');
+    const drawerTitle = document.getElementById('drawer-title');
+    const drawerBody = document.getElementById('drawer-body');
+    const utilityDrawer = document.getElementById('utility-drawer');
+    const utilityType = document.getElementById('utility-type');
+    const utilityTitle = document.getElementById('utility-title');
+    const utilityBody = document.getElementById('utility-body');
+    const pcapInput = document.getElementById('pcap-input');
+
+    feedContainer.innerHTML = statusLine('SELECT_PCAP_TO_START');
+
+    document.getElementById('reset-camera').addEventListener('click', () => {
+        camera.position.set(0, 50, 150);
+        controls.target.set(0, 0, 0);
+        controls.update();
+    });
+    document.getElementById('play-toggle').addEventListener('click', () => {
+        if (!state.frameCount) return;
+        state.playing ? pauseReplay() : playReplay();
+    });
+    document.getElementById('first-frame').addEventListener('click', () => {
+        if (!state.frameCount) return;
+        pauseReplay();
+        setFrame(1);
+    });
+    document.getElementById('last-frame').addEventListener('click', () => {
+        if (!state.frameCount) return;
+        pauseReplay();
+        setFrame(state.frameCount);
+    });
+    document.querySelectorAll('[data-speed]').forEach(button => button.addEventListener('click', () => setSpeed(Number(button.dataset.speed))));
+    document.querySelectorAll('[data-feed-filter]').forEach(button => button.addEventListener('click', () => setFeedFilter(button.dataset.feedFilter)));
+    document.getElementById('drawer-close').addEventListener('click', () => drawer.classList.add('hidden'));
+    document.getElementById('utility-close').addEventListener('click', () => utilityDrawer.classList.add('hidden'));
+    document.getElementById('session-status').addEventListener('click', () => pcapInput.click());
+    document.getElementById('notifications-button').addEventListener('click', showHealthDrawer);
+    document.getElementById('settings-button').addEventListener('click', showSettingsDrawer);
+    pcapInput.addEventListener('change', event => {
+        const file = event.target.files?.[0];
+        if (file) uploadPcap(file).catch(renderConnectionFault);
+    });
+    if (window.location.hash === '#notifications') showHealthDrawer();
+    if (window.location.hash === '#settings') showSettingsDrawer();
+    if (window.location.hash === '#select-pcap') setTimeout(() => pcapInput.click(), 250);
+    renderer.domElement.addEventListener('click', inspectGraphObject);
+    range.addEventListener('input', event => {
+        if (!state.frameCount) return;
+        pauseReplay();
+        const frameId = Math.max(1, Math.min(state.frameCount, Math.round((Number(event.target.value) / 100) * state.frameCount) || 1));
+        setFrame(frameId);
+    });
+    window.addEventListener('resize', () => {
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+    });
+
+    async function uploadPcap(file) {
+        pauseReplay();
+        sessionStatusLabel.innerText = 'ANALYZING PCAP';
+        feedContainer.innerHTML = statusLine(`UPLOAD_STARTED: ${file.name}`);
+        const body = new FormData();
+        body.append('file', file);
+        const response = await fetch(API_BASE + '/api/pcap/select', { method: 'POST', body });
+        if (!response.ok) {
+            const detail = await response.text();
+            throw new Error(`/api/pcap/select returned ${response.status}: ${detail.slice(0, 300)}`);
+        }
+        const result = await response.json();
+        feedContainer.innerHTML = statusLine(`ANALYSIS_COMPLETE: ${result.summary?.frame_count || 0}_FRAMES`);
+        resetReplayState();
+        await initReplay();
+    }
+
+    function resetReplayState() {
+        state.session = null;
+        state.frames.clear();
+        state.events = [];
+        state.chapters = [];
+        state.narratives = [];
+        state.summary = null;
+        state.candidates = [];
+        state.hypotheses = [];
+        state.relationships = [];
+        state.hosts = [];
+        state.currentFrameId = 1;
+        state.frameCount = 0;
+        state.duration = 0;
+        document.getElementById('candidate-strip').classList.add('hidden');
+        document.getElementById('feed-filter').classList.add('hidden');
+        timeDisplay.innerText = '--:--:--';
+        totalTimeDisplay.innerText = '--:--:--';
+        chapterTrack.innerHTML = '';
+        progress.style.width = '0%';
+        range.value = 0;
+        drawer.classList.add('hidden');
+        clearGraph();
+    }
+
+    async function restoreExistingCapture() {
+        try {
+            const session = await api('/api/replay/session', { method: 'POST' });
+            if (session.frame_count > 0) {
+                await initReplay(session);
+                return;
+            }
+            sessionStatusLabel.innerText = 'SELECT PCAP';
+            feedContainer.innerHTML = statusLine('SELECT_PCAP_TO_START');
+        } catch (error) {
+            renderConnectionFault(error);
+        }
+    }
+
+    async function initReplay(existingSession = null) {
+        feedContainer.innerHTML = statusLine('CONNECTING_REPLAY_BACKEND');
+        const [session, events, chapters, narratives, summary, candidates, hypotheses, relationships, hosts] = await Promise.all([
+            existingSession || api('/api/replay/session', { method: 'POST' }),
+            api('/api/events'),
+            api('/api/chapters'),
+            api('/api/narratives'),
+            api('/api/summary'),
+            api('/api/candidates'),
+            api('/api/hypotheses'),
+            api('/api/relationships'),
+            api('/api/hosts')
+        ]);
+        state.session = session;
+        state.events = events;
+        state.chapters = chapters;
+        state.narratives = narratives;
+        state.summary = summary;
+        state.candidates = candidates;
+        state.hypotheses = hypotheses;
+        state.relationships = relationships;
+        state.hosts = hosts;
+        state.frameCount = session.frame_count;
+        state.duration = session.duration;
+        if (!state.frameCount) {
+            resetReplayState();
+            sessionStatusLabel.innerText = 'SELECT PCAP';
+            feedContainer.innerHTML = statusLine('SELECT_PCAP_TO_START');
+            return;
+        }
+        sessionStatusLabel.innerText = 'PCAP LOADED';
+        document.getElementById('candidate-strip').classList.remove('hidden');
+        document.getElementById('feed-filter').classList.remove('hidden');
+        totalTimeDisplay.innerText = formatDuration(session.duration);
+        renderChapters(chapters);
+        renderEventPips(events);
+        renderNarrative(narratives[0]);
+        renderCandidateStrip();
+        await updateHost(summary.top_host || candidates[0]?.host || narratives[0]?.host || hosts[0]?.ip);
+        const seekTime = new URLSearchParams(window.location.search).get('time');
+        if (seekTime) {
+            const frame = await api(`/api/replay/seek?time=${encodeURIComponent(seekTime)}`);
+            state.frames.set(frame.frame_id, frame);
+            renderFrame(frame);
+        } else {
+            renderFrame(await getFrame(1));
+        }
+        prefetchFrames();
+    }
+
+    async function api(path, options = {}) {
+        const response = await fetch(API_BASE + path, { headers: { Accept: 'application/json', ...(options.headers || {}) }, ...options });
+        if (!response.ok) throw new Error(`${path} returned ${response.status}`);
+        return response.json();
+    }
+
+    async function getFrame(frameId) {
+        const bounded = Math.max(1, Math.min(state.frameCount || frameId, frameId));
+        if (state.frames.has(bounded)) return state.frames.get(bounded);
+        const frame = await api(`/api/replay/frame/${bounded}`);
+        state.frames.set(frame.frame_id, frame);
+        return frame;
+    }
+
+    async function setFrame(frameId) {
+        if (!state.frameCount) return;
+        renderFrame(await getFrame(frameId));
+    }
+
+    function renderFrame(frame) {
+        state.currentFrameId = frame.frame_id;
+        renderNetwork(frame);
+        renderFeed(frame);
+        updateTimeline(frame);
+        updateActiveChapter(frame.timestamp);
+        const host = frame.candidate_hosts?.[0]?.host;
+        if (host && host !== state.activeHost) updateHost(host);
+    }
+
+    function renderNetwork(frame) {
+        clearGraph();
+        nodePositions.clear();
+        nodesById.clear();
+        const frameNodes = frame.nodes || [];
+        const radius = Math.max(55, Math.min(180, frameNodes.length * 1.7));
+        frameNodes.forEach((node, index) => {
+            const position = nodePosition(node, index, frameNodes.length, radius);
+            nodePositions.set(node.id, position);
+            const sprite = createNodeSprite(node);
+            sprite.position.copy(position);
+            sprite.userData = { type: 'node', node };
+            graphGroup.add(sprite);
+            nodesById.set(node.id, node);
+            nodeSprites.push({ mesh: sprite, risk: Number(node.risk_score || 0), floatOffset: (index % 24) / 24 * Math.PI * 2 });
+        });
+        (frame.edges || []).forEach(edge => {
+            const source = nodePositions.get(edge.source);
+            const target = nodePositions.get(edge.target);
+            if (!source || !target) return;
+            const primary = isPrimaryEdge(edge);
+            const line = new THREE.Line(
+                new THREE.BufferGeometry().setFromPoints([source, target]),
+                new THREE.LineBasicMaterial({ color: primary ? 0xff4d4d : Number(edge.risk_score || 0) >= 35 ? 0xff4d4d : 0x00e5ff, transparent: true, opacity: primary ? 0.95 : 0.28, blending: THREE.AdditiveBlending })
+            );
+            line.userData = { type: 'edge', edge };
+            graphGroup.add(line);
+            edgeLines.push(line);
+        });
+    }
+
+    function createNodeSprite(node) {
+        const risk = Number(node.risk_score || 0);
+        const role = String(node.role || '').toUpperCase();
+        const icon = risk >= 70 ? 'warning' : role.includes('INFRA') ? 'dns' : role.includes('SERVER') ? 'storage' : role.includes('EXTERNAL') ? 'public' : 'computer';
+        const color = risk >= 70 ? '#ff4d4d' : risk >= 35 ? '#fec931' : '#00e5ff';
+        const canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+        const gradient = ctx.createRadialGradient(64, 64, 10, 64, 64, 60);
+        gradient.addColorStop(0, color);
+        gradient.addColorStop(0.65, `${color}aa`);
+        gradient.addColorStop(1, 'transparent');
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(64, 64, 58, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = risk >= 70 ? '#ff4d4d' : '#00e5ff';
+        ctx.lineWidth = risk >= 70 ? 4 : 2;
+        ctx.stroke();
+        ctx.fillStyle = color;
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = color;
+        ctx.font = '64px "Material Symbols Outlined"';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(icon, 64, 64);
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, depthWrite: false, opacity: 0.88, blending: THREE.AdditiveBlending }));
+        const size = risk >= 70 ? 20 : risk >= 35 ? 17 : 14;
+        sprite.scale.set(size, size, 1);
+        return sprite;
+    }
+
+    function clearGraph() {
+        while (graphGroup.children.length) {
+            const child = graphGroup.children.pop();
+            child.traverse?.(object => {
+                object.geometry?.dispose?.();
+                if (Array.isArray(object.material)) object.material.forEach(material => material.dispose?.());
+                else object.material?.dispose?.();
+            });
+        }
+        nodeSprites.length = 0;
+        edgeLines.length = 0;
+    }
+
+    function nodePosition(node, index, total, radius) {
+        const seed = hashString(node.ip || node.id || String(index));
+        const ring = (seed % 4) + 1;
+        const angle = (index / Math.max(total, 1)) * Math.PI * 2 + (seed % 80) / 80;
+        return new THREE.Vector3(Math.sin(angle) * radius * (ring / 4), ((seed % 100) / 100 - 0.5) * 90, Math.cos(angle) * radius * (ring / 4));
+    }
+
+    function renderFeed(frame) {
+        const cutoff = Date.parse(frame.timestamp);
+        const events = state.events
+            .filter(event => Date.parse(event.timestamp) <= cutoff)
+            .filter(event => state.feedFilter === 'all' || (state.feedFilter === 'signal' && event.severity !== 'INFO') || (state.feedFilter === 'high' && ['HIGH', 'CRITICAL'].includes(event.severity)))
+            .slice(-12)
+            .reverse();
+        feedContainer.innerHTML = events.map(event => {
+            const alert = ['HIGH', 'CRITICAL'].includes(event.severity);
+            return `<div class="${alert ? 'text-error/70' : 'text-primary/70'} terminal-glow flex gap-2 transition-all duration-500 transform"><span>[${timePart(event.timestamp)}]</span> <span class="${alert ? 'text-error animate-pulse' : 'text-primary'}">${escapeHtml(event.type).toUpperCase()}: ${escapeHtml(event.host || 'UNKNOWN')}</span></div>`;
+        }).join('') || statusLine('NO_EVENTS_AT_FRAME');
+    }
+
+    function renderNarrative(narrative) {
+        if (!narrative) return;
+        const summary = `${narrative.host || 'UNKNOWN'} | ${narrative.priority || 'LOW'} | ${Math.round(narrative.confidence || 0)}% CONF`;
+        document.getElementById('session-status').title = narrative.executive_summary || summary;
+    }
+
+    function renderCandidateStrip() {
+        const candidate = state.candidates[0] || {};
+        const hypothesis = state.hypotheses[0] || {};
+        document.getElementById('strip-host').innerText = candidate.host || state.summary?.top_host || '--';
+        document.getElementById('strip-role').innerText = candidate.host_role || '--';
+        document.getElementById('strip-risk').innerText = Number(candidate.risk || 0).toFixed(1);
+        document.getElementById('strip-confidence').innerText = `${Math.round(candidate.confidence || hypothesis.confidence || 0)}%`;
+        document.getElementById('strip-destination').innerText = hypothesis.metadata?.relationship_destination || state.summary?.primary_destination || '--';
+        document.getElementById('strip-priority').innerText = candidate.priority || '--';
+    }
+
+    async function updateHost(ip) {
+        if (!ip) return;
+        const host = await api(`/api/hosts/${encodeURIComponent(ip)}`);
+        state.activeHost = host.ip;
+        document.getElementById('coord-x').innerText = `FOCUS_HOST: ${host.ip}`;
+        document.getElementById('coord-y').innerText = `ROLE: ${host.role || 'UNKNOWN'}`;
+        document.getElementById('depth').innerText = `RISK_SCORE: ${Number(host.risk || 0).toFixed(1)}`;
+    }
+
+    function renderChapters(chapters) {
+        const total = chapters.reduce((sum, chapter) => sum + Math.max(Number(chapter.duration_seconds || 0), 1), 0) || 1;
+        chapterTrack.innerHTML = chapters.map(chapter => {
+            const width = Math.max(8, Math.max(Number(chapter.duration_seconds || 0), 1) / total * 100);
+            const critical = Number(chapter.importance || 0) >= 90;
+            return `<div class="chapter-segment border-t-2 ${critical ? 'border-error/40' : 'border-primary/20'} flex items-center px-2 cursor-pointer" data-chapter-id="${chapter.id}" style="width:${width}%"><span class="font-label-caps text-[9px] ${critical ? 'text-error/80' : 'text-primary/80'} truncate">${escapeHtml(chapter.title).toUpperCase().replaceAll(' ', '_')}</span></div>`;
+        }).join('');
+        chapterTrack.querySelectorAll('[data-chapter-id]').forEach(segment => segment.addEventListener('click', async () => {
+            pauseReplay();
+            const chapter = state.chapters.find(item => String(item.id) === segment.dataset.chapterId);
+            if (chapter) showChapterDrawer(chapter);
+            const frame = await api(`/api/replay/chapter/${segment.dataset.chapterId}`);
+            state.frames.set(frame.frame_id, frame);
+            renderFrame(frame);
+        }));
+    }
+
+    function setFeedFilter(filter) {
+        state.feedFilter = filter;
+        document.querySelectorAll('[data-feed-filter]').forEach(button => {
+            const active = button.dataset.feedFilter === filter;
+            button.classList.toggle('bg-primary/20', active);
+            button.classList.toggle('text-primary', active);
+            button.classList.toggle('text-outline', !active);
+            button.classList.toggle('border-primary/50', active);
+        });
+        if (state.frames.has(state.currentFrameId)) renderFeed(state.frames.get(state.currentFrameId));
+    }
+
+    function inspectGraphObject(event) {
+        const bounds = renderer.domElement.getBoundingClientRect();
+        pointer.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
+        pointer.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
+        raycaster.setFromCamera(pointer, camera);
+        const intersects = raycaster.intersectObjects([...nodeSprites.map(item => item.mesh), ...edgeLines], false);
+        if (!intersects.length) return;
+        const object = intersects[0].object;
+        if (object.userData.type === 'node') showHostDrawer(object.userData.node);
+        if (object.userData.type === 'edge') showRelationshipDrawer(object.userData.edge);
+    }
+
+    function showHostDrawer(node) {
+        const host = state.hosts.find(item => item.ip === node.ip) || {};
+        const candidate = state.candidates.find(item => item.host === node.ip) || {};
+        const events = state.events.filter(event => event.host === node.ip).slice(-5).reverse();
+        drawerType.innerText = 'HOST_INSPECTION';
+        drawerTitle.innerText = node.ip || node.id || 'Unknown host';
+        drawerBody.innerHTML = `
+            <div class="grid grid-cols-2 gap-2">
+                ${metric('ROLE', host.role || node.role || 'UNKNOWN')}
+                ${metric('RISK', Number(host.risk || node.risk_score || 0).toFixed(1))}
+                ${metric('PRIORITY', candidate.priority || 'NONE')}
+                ${metric('CONFIDENCE', candidate.confidence ? `${Math.round(candidate.confidence)}%` : '--')}
+            </div>
+            <div class="font-label-caps text-[10px] text-primary">RECENT_EVENTS</div>
+            <div class="space-y-1">${events.map(event => `<div class="text-xs border-l border-primary/30 pl-2">${escapeHtml(event.type)} | ${escapeHtml(event.severity)}</div>`).join('') || '<div class="text-xs text-outline">No host events in current catalog.</div>'}</div>
+            <a class="inline-block mt-2 text-primary font-label-caps text-[10px]" href="/frontend/hosts.html">OPEN_HOST_BEHAVIOUR</a>
+        `;
+        drawer.classList.remove('hidden');
+    }
+
+    function showRelationshipDrawer(edge) {
+        const source = nodesById.get(edge.source)?.ip || edge.source;
+        const target = nodesById.get(edge.target)?.ip || edge.target;
+        const relationship = state.relationships.find(item => (item.source === source && item.target === target) || (item.source === target && item.target === source)) || {};
+        drawerType.innerText = 'RELATIONSHIP_INSPECTION';
+        drawerTitle.innerText = `${source} -> ${target}`;
+        drawerBody.innerHTML = `
+            <div class="grid grid-cols-2 gap-2">
+                ${metric('RISK', Number(relationship.risk || edge.risk_score || 0).toFixed(1))}
+                ${metric('PROTOCOL', (relationship.protocols || edge.protocols || ['unknown']).join(', '))}
+                ${metric('RARITY', relationship.destination_rarity_score ?? '--')}
+                ${metric('EXCLUSIVITY', relationship.destination_exclusivity_score ?? '--')}
+                ${metric('CONSUMERS', relationship.destination_consumer_count ?? '--')}
+                ${metric('SEVERITY', relationship.severity || '--')}
+            </div>
+            ${chipBlock('SUPPORTING_EVIDENCE', relationship.supporting_evidence || [])}
+            ${chipBlock('CONTRADICTIONS', relationship.contradictory_evidence || [])}
+            <p class="text-xs text-on-surface-variant">${escapeHtml(relationship.confidence_explanation || 'No hypothesis evidence is attached to this relationship.')}</p>
+        `;
+        drawer.classList.remove('hidden');
+    }
+
+    function showChapterDrawer(chapter) {
+        drawerType.innerText = 'CHAPTER_DETAIL';
+        drawerTitle.innerText = chapter.title;
+        drawerBody.innerHTML = `
+            <div class="grid grid-cols-2 gap-2">
+                ${metric('SEVERITY', chapter.severity)}
+                ${metric('EVENTS', chapter.event_count)}
+                ${metric('HOSTS', chapter.hosts?.length || 0)}
+                ${metric('DURATION', `${Math.round(chapter.duration_seconds || 0)}s`)}
+            </div>
+            <p class="text-sm">${escapeHtml(chapter.description || 'No chapter description available.')}</p>
+        `;
+        drawer.classList.remove('hidden');
+    }
+
+    async function showHealthDrawer() {
+        openUtilityDrawer('NOTIFICATION_CENTER', 'System status');
+        try {
+            const runtime = await api('/api/runtime/logs');
+            const health = runtime.health || {};
+            const stderr = runtime.stderr || [];
+            const stdout = runtime.stdout || [];
+            const validationState = [
+                ['GRAPH', health.graph_consistency?.valid === true ? 'VALID' : 'WAITING'],
+                ['HYPOTHESES', health.hypothesis_validation?.valid === true ? 'VALID' : 'WAITING'],
+                ['CANDIDATES', health.candidate_validation?.valid === true ? 'VALID' : 'WAITING'],
+                ['SNAPSHOTS', health.snapshot_quality?.quality_score ?? '--'],
+                ['LAYER6', health.layer6_readiness?.ready === true ? 'READY' : 'WAITING'],
+                ['ERRORS', stderr.length]
+            ];
+            utilityBody.innerHTML = `
+                <div class="grid grid-cols-3 gap-2">
+                    ${validationState.map(([label, value]) => utilityMetric(label, value)).join('')}
+                </div>
+                <div class="border border-outline-variant/30 bg-surface-container-low/50 p-3">
+                    <div class="flex items-center justify-between">
+                        <span class="font-label-caps text-[10px] text-primary">CAPTURE_STATE</span>
+                        <span class="font-mono-data text-[11px] ${state.summary ? 'text-primary' : 'text-outline'}">${state.summary ? 'LOADED' : 'AWAITING_PCAP'}</span>
+                    </div>
+                    <p class="mt-2 text-xs text-outline">${state.summary ? `${state.summary.frame_count} frames / ${state.summary.event_count} events loaded.` : 'Select a PCAP to generate replay artifacts and unlock investigation context.'}</p>
+                </div>
+                <details class="border border-outline-variant/30 bg-black/40 p-3">
+                    <summary class="cursor-pointer font-label-caps text-[10px] text-primary">ERROR_LOG_TAIL</summary>
+                    <pre class="mt-2 max-h-36 overflow-auto text-[10px] text-error whitespace-pre-wrap">${escapeHtml(renderLogTail(stderr, 'No backend errors logged.'))}</pre>
+                </details>
+                <details class="border border-outline-variant/30 bg-black/40 p-3">
+                    <summary class="cursor-pointer font-label-caps text-[10px] text-primary">INFO_LOG_TAIL</summary>
+                    <pre class="mt-2 max-h-32 overflow-auto text-[10px] text-on-surface-variant whitespace-pre-wrap">${escapeHtml(renderLogTail(stdout, 'No backend info log entries.'))}</pre>
+                </details>
+            `;
+        } catch (error) {
+            utilityBody.innerHTML = `<p class="text-error">${escapeHtml(error.message)}</p>`;
+        }
+    }
+
+    async function showSettingsDrawer() {
+        openUtilityDrawer('REPLAY_SETTINGS', 'Control center');
+        const summaryMarkup = state.summary
+            ? `<div class="grid grid-cols-3 gap-2">
+                    ${utilityMetric('FRAMES', state.summary.frame_count)}
+                    ${utilityMetric('EVENTS', state.summary.event_count)}
+                    ${utilityMetric('NODES', state.summary.node_count)}
+                </div>`
+            : '<p class="text-outline text-sm">No capture is loaded. Start with a PCAP, then replay controls and context settings become active.</p>';
+        const workspaceMarkup = state.summary
+            ? `<label class="flex items-center justify-between gap-3 py-1">
+                    <span>Show candidate overlay</span>
+                    <input type="checkbox" id="toggle-candidate-overlay" ${document.getElementById('candidate-strip').classList.contains('hidden') ? '' : 'checked'}>
+                </label>
+                <label class="flex items-center justify-between gap-3 py-1">
+                    <span>Show event filters</span>
+                    <input type="checkbox" id="toggle-feed-filter" ${document.getElementById('feed-filter').classList.contains('hidden') ? '' : 'checked'}>
+                </label>`
+            : '<p class="text-xs text-outline">Workspace overlays are available after a PCAP is loaded.</p>';
+        utilityBody.innerHTML = `
+            ${summaryMarkup}
+            <div class="border border-outline-variant/30 bg-surface-container-low/50 p-3">
+                <div class="font-label-caps text-[10px] text-primary mb-2">CAPTURE</div>
+                <div class="grid grid-cols-2 gap-2">
+                    <button class="px-3 py-2 bg-primary/10 border border-primary/40 text-primary font-label-caps text-[10px] rounded-sm hover:bg-primary/20" id="select-another-pcap">${state.summary ? 'REPLACE_PCAP' : 'SELECT_PCAP'}</button>
+                    <button class="px-3 py-2 border border-error/40 text-error font-label-caps text-[10px] rounded-sm hover:bg-error/10" id="clear-artifacts">CLEAR_ARTIFACTS</button>
+                </div>
+            </div>
+            <div class="border border-outline-variant/30 bg-surface-container-low/50 p-3">
+                <div class="font-label-caps text-[10px] text-primary mb-2">REPLAY_SPEED</div>
+                <div class="grid grid-cols-3 gap-2">
+                    <button class="px-3 py-2 border border-outline-variant/40 text-on-surface font-label-caps text-[10px] rounded-sm hover:border-primary" data-settings-speed="1">1X</button>
+                    <button class="px-3 py-2 border border-primary/40 text-primary font-label-caps text-[10px] rounded-sm hover:bg-primary/10" data-settings-speed="4">4X</button>
+                    <button class="px-3 py-2 border border-outline-variant/40 text-on-surface font-label-caps text-[10px] rounded-sm hover:border-primary" data-settings-speed="16">16X</button>
+                </div>
+            </div>
+            <div class="border border-outline-variant/30 bg-surface-container-low/50 p-3">
+                <div class="font-label-caps text-[10px] text-primary mb-2">WORKSPACE</div>
+                ${workspaceMarkup}
+            </div>
+        `;
+        bindSettingsControls();
+    }
+
+    function bindSettingsControls() {
+        utilityBody.querySelector('#select-another-pcap')?.addEventListener('click', () => pcapInput.click());
+        utilityBody.querySelector('#clear-artifacts')?.addEventListener('click', async () => {
+            const button = utilityBody.querySelector('#clear-artifacts');
+            button.disabled = true;
+            button.innerText = 'CLEARING';
+            const response = await fetch(API_BASE + '/api/artifacts/clear', { method: 'POST', headers: { Accept: 'application/json' } });
+            if (!response.ok) throw new Error(`/api/artifacts/clear returned ${response.status}`);
+            resetReplayState();
+            sessionStatusLabel.innerText = 'SELECT PCAP';
+            feedContainer.innerHTML = statusLine('ARTIFACTS_CLEARED_SELECT_PCAP');
+            utilityDrawer.classList.add('hidden');
+        });
+        utilityBody.querySelectorAll('[data-settings-speed]').forEach(button => {
+            button.addEventListener('click', () => setSpeed(Number(button.dataset.settingsSpeed)));
+        });
+        utilityBody.querySelector('#toggle-candidate-overlay')?.addEventListener('change', event => {
+            document.getElementById('candidate-strip').classList.toggle('hidden', !event.target.checked);
+        });
+        utilityBody.querySelector('#toggle-feed-filter')?.addEventListener('change', event => {
+            document.getElementById('feed-filter').classList.toggle('hidden', !event.target.checked);
+        });
+    }
+
+    function openUtilityDrawer(type, title) {
+        drawer.classList.add('hidden');
+        utilityType.innerText = type;
+        utilityTitle.innerText = title;
+        utilityBody.innerHTML = '<div class="font-mono-data text-[11px] text-outline">LOADING</div>';
+        utilityDrawer.classList.remove('hidden');
+    }
+
+    function renderLogTail(lines, emptyMessage) {
+        return Array.isArray(lines) && lines.length ? lines.slice(-80).join('\n') : emptyMessage;
+    }
+
+    function utilityMetric(label, value) {
+        return `<div class="bg-surface-container-low/70 border border-outline-variant/30 p-2 min-w-0"><div class="font-label-caps text-[9px] text-outline wrap-anywhere">${escapeHtml(label)}</div><div class="font-mono-data text-primary text-sm text-field">${escapeHtml(value)}</div></div>`;
+    }
+
+    function isPrimaryEdge(edge) {
+        const source = nodesById.get(edge.source)?.ip || edge.source;
+        const target = nodesById.get(edge.target)?.ip || edge.target;
+        const destination = state.summary?.primary_destination || state.hypotheses[0]?.metadata?.relationship_destination;
+        const host = state.summary?.top_host || state.candidates[0]?.host;
+        return destination && host && ((source === host && target === destination) || (target === host && source === destination));
+    }
+
+    function metric(label, value) {
+        return `<div class="bg-surface-container-low/60 border border-outline-variant/30 p-2 min-w-0"><div class="font-label-caps text-[9px] text-outline wrap-anywhere">${escapeHtml(label)}</div><div class="font-mono-data text-primary text-field">${escapeHtml(value)}</div></div>`;
+    }
+
+    function chipBlock(label, items) {
+        return `<div class="min-w-0"><div class="font-label-caps text-[10px] text-primary mb-1 wrap-anywhere">${label}</div><div class="flex flex-wrap gap-1 min-w-0">${items.length ? items.map(item => `<span class="px-2 py-1 border border-primary/20 text-[10px] font-mono-data text-field max-w-full">${escapeHtml(item)}</span>`).join('') : '<span class="text-xs text-outline">none observed</span>'}</div></div>`;
+    }
+
+    function renderEventPips(events) {
+        scrubberTrack.querySelectorAll('.event-pip').forEach(pip => pip.remove());
+        if (!events.length) return;
+        const start = Date.parse(events[0].timestamp);
+        const end = Date.parse(events[events.length - 1].timestamp);
+        const span = Math.max(end - start, 1);
+        const stride = Math.max(1, Math.floor(events.length / 90));
+        events.filter((_, index) => index % stride === 0).forEach(event => {
+            const pip = document.createElement('div');
+            pip.className = `event-pip group-hover:h-16 transition-all ${['HIGH', 'CRITICAL'].includes(event.severity) ? 'bg-error h-16 shadow-[0_0_12px_rgba(255,180,171,0.8)]' : ''}`;
+            pip.style.left = `${Math.max(0, Math.min(100, (Date.parse(event.timestamp) - start) / span * 100))}%`;
+            pip.title = event.type;
+            scrubberTrack.appendChild(pip);
+        });
+    }
+
+    function updateTimeline(frame) {
+        const percent = state.frameCount ? frame.frame_id / state.frameCount * 100 : 0;
+        range.value = percent;
+        progress.style.width = `${percent}%`;
+        timeDisplay.innerText = elapsedTime(frame.timestamp);
+    }
+
+    function updateActiveChapter(timestamp) {
+        const current = Date.parse(timestamp);
+        chapterTrack.querySelectorAll('[data-chapter-id]').forEach(segment => {
+            const chapter = state.chapters.find(item => String(item.id) === segment.dataset.chapterId);
+            segment.classList.toggle('chapter-active', Boolean(chapter && Date.parse(chapter.start_time) <= current && Date.parse(chapter.end_time) >= current));
+        });
+    }
+
+    function playReplay() {
+        if (!state.frameCount) return;
+        state.playing = true;
+        state.lastStep = performance.now();
+        playIcon.innerText = 'pause';
+    }
+
+    function pauseReplay() {
+        state.playing = false;
+        playIcon.innerText = 'play_arrow';
+    }
+
+    function setSpeed(speed) {
+        state.speed = speed;
+        document.querySelectorAll('[data-speed]').forEach(button => {
+            const active = Number(button.dataset.speed) === speed;
+            button.classList.toggle('text-primary', active);
+            button.classList.toggle('bg-primary/20', active);
+            button.classList.toggle('text-outline', !active);
+        });
+    }
+
+    async function stepPlayback(now) {
+        const interval = Math.max(70, 600 / state.speed);
+        if (!state.playing || state.pendingFrame || now - state.lastStep < interval) return;
+        state.lastStep = now;
+        if (state.currentFrameId >= state.frameCount) {
+            pauseReplay();
+            return;
+        }
+        state.pendingFrame = true;
+        try {
+            await setFrame(state.currentFrameId + 1);
+        } finally {
+            state.pendingFrame = false;
+        }
+    }
+
+    async function prefetchFrames() {
+        for (let frameId = 1; frameId <= state.frameCount; frameId += 10) {
+            const batch = [];
+            for (let id = frameId; id < Math.min(frameId + 10, state.frameCount + 1); id++) {
+                if (!state.frames.has(id)) batch.push(getFrame(id).catch(() => null));
+            }
+            await Promise.all(batch);
+        }
+    }
+
+    const clock = new THREE.Clock();
+    function animate(now) {
+        requestAnimationFrame(animate);
+        const elapsed = clock.getElapsedTime();
+        controls.update();
+        nodeSprites.forEach(node => {
+            const breathing = 0.82 + Math.sin(elapsed * 2 + node.floatOffset) * 0.14;
+            node.mesh.material.opacity = breathing;
+            node.mesh.position.y += Math.sin(elapsed + node.floatOffset) * 0.015;
+            if (node.risk >= 70) {
+                const pulse = 1 + Math.sin(elapsed * 4) * 0.12;
+                node.mesh.scale.setScalar(18 * pulse);
+            }
+        });
+        stars.rotation.y += 0.0001;
+        stepPlayback(now);
+        renderer.render(scene, camera);
+    }
+    animate();
+
+    function renderConnectionFault(error) {
+        feedContainer.innerHTML = statusLine(`REPLAY_BACKEND_OFFLINE: ${error.message}`);
+        sessionStatusLabel.innerText = 'BACKEND OFFLINE';
+    }
+
+    function elapsedTime(timestamp) {
+        if (!state.events.length) return '00:00:00';
+        return formatDuration(Math.max(0, (Date.parse(timestamp) - Date.parse(state.events[0].timestamp)) / 1000));
+    }
+
+    function formatDuration(seconds) {
+        const total = Math.max(0, Math.floor(seconds || 0));
+        const hrs = Math.floor(total / 3600);
+        const mins = Math.floor((total % 3600) / 60);
+        const secs = total % 60;
+        return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    function timePart(timestamp) {
+        return new Date(timestamp).toISOString().slice(11, 19);
+    }
+
+    function hashString(value) {
+        let hash = 0;
+        for (let i = 0; i < value.length; i++) {
+            hash = ((hash << 5) - hash) + value.charCodeAt(i);
+            hash |= 0;
+        }
+        return Math.abs(hash);
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+    }
+
+    function statusLine(message) {
+        return `<div class="text-primary/70 terminal-glow flex gap-2"><span>[SYSTEM]</span> <span class="text-primary">${escapeHtml(message)}</span></div>`;
+    }
+    restoreExistingCapture();
+</script>
+
+
+</body></html>

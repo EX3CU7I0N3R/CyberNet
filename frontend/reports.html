@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CYBERNET | Strategic Briefing</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            background-color: #05070A;
+            background-image: 
+                radial-gradient(circle at 50% 50%, #0A141A 0%, #05070A 100%),
+                repeating-linear-gradient(0deg, rgba(0, 229, 255, 0.02) 0px, rgba(0, 229, 255, 0.02) 1px, transparent 1px, transparent 2px);
+            background-size: 100% 100%, 100% 4px;
+            color: #dce4e5;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .glass-panel {
+            background: rgba(10, 15, 22, 0.9);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(186, 201, 204, 0.1);
+        }
+
+        .tactical-border {
+            position: relative;
+        }
+
+        .tactical-border::before, .tactical-border::after {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-color: #00daf3;
+            border-style: solid;
+        }
+
+        .tactical-border::before {
+            top: -1px;
+            left: -1px;
+            border-width: 2px 0 0 2px;
+        }
+
+        .tactical-border::after {
+            bottom: -1px;
+            right: -1px;
+            border-width: 0 2px 2px 0;
+        }
+
+        .glow-cyan {
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.15);
+        }
+
+        .flicker-effect:hover {
+            animation: flicker 0.2s infinite;
+        }
+
+        @keyframes flicker {
+            0% { opacity: 1; filter: brightness(1); }
+            50% { opacity: 0.8; filter: brightness(1.5); }
+            100% { opacity: 1; filter: brightness(1); }
+        }
+
+        .scanline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, transparent 50%, rgba(0, 229, 255, 0.01) 50%);
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        .led-pulse {
+            animation: pulse-glow 2s infinite ease-in-out;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.1); box-shadow: 0 0 8px currentColor; }
+        }
+
+        main[data-loading="true"] > :not(header) {
+            visibility: hidden;
+        }
+
+        main[data-loading="true"]::after {
+            content: "AWAITING_REPORT_CONTEXT";
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00daf3;
+            font: 700 12px/16px "Space Grotesk", sans-serif;
+            letter-spacing: 0.1em;
+            border: 1px solid rgba(0, 229, 255, 0.35);
+            background: rgba(13, 21, 22, 0.88);
+            padding: 16px 24px;
+            z-index: 40;
+        }
+
+        .wrap-anywhere {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            min-width: 0;
+        }
+
+        .text-field {
+            white-space: normal;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            min-width: 0;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "secondary-fixed-dim": "#c2c6d1",
+                      "surface": "#0d1516",
+                      "on-tertiary-fixed": "#251a00",
+                      "surface-tint": "#00daf3",
+                      "on-error-container": "#ffdad6",
+                      "primary-container": "#00e5ff",
+                      "outline-variant": "#3b494c",
+                      "background": "#0d1516",
+                      "surface-bright": "#333a3c",
+                      "secondary-fixed": "#dee2ed",
+                      "on-error": "#690005",
+                      "error": "#ffb4ab",
+                      "secondary-container": "#474c54",
+                      "on-secondary-container": "#b7bcc6",
+                      "primary-fixed-dim": "#00daf3",
+                      "outline": "#849396",
+                      "on-primary-container": "#00626e",
+                      "inverse-primary": "#006875",
+                      "on-secondary-fixed": "#171c23",
+                      "on-surface": "#dce4e5",
+                      "on-primary": "#00363d",
+                      "primary-fixed": "#9cf0ff",
+                      "surface-container-lowest": "#080f11",
+                      "secondary": "#c2c6d1",
+                      "inverse-surface": "#dce4e5",
+                      "on-tertiary-fixed-variant": "#594400",
+                      "primary": "#c3f5ff",
+                      "on-primary-fixed-variant": "#004f58",
+                      "surface-dim": "#0d1516",
+                      "surface-container-low": "#151d1e",
+                      "on-surface-variant": "#bac9cc",
+                      "on-secondary": "#2c3139",
+                      "on-background": "#dce4e5",
+                      "surface-container-highest": "#2e3638",
+                      "surface-container-high": "#242b2d",
+                      "tertiary-fixed-dim": "#f3bf26",
+                      "on-tertiary": "#3e2e00",
+                      "surface-variant": "#2e3638",
+                      "on-primary-fixed": "#001f24",
+                      "inverse-on-surface": "#2a3233",
+                      "tertiary-fixed": "#ffdf96",
+                      "on-secondary-fixed-variant": "#42474f",
+                      "error-container": "#93000a",
+                      "tertiary": "#ffeac0",
+                      "tertiary-container": "#fec931",
+                      "surface-container": "#192122",
+                      "on-tertiary-container": "#6f5500"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "base": "4px",
+                      "md": "24px",
+                      "xs": "8px",
+                      "sm": "16px",
+                      "xl": "64px",
+                      "margin-desktop": "48px",
+                      "lg": "40px",
+                      "margin-mobile": "16px",
+                      "gutter": "20px"
+              },
+              "fontFamily": {
+                      "headline-lg": ["Space Grotesk"],
+                      "headline-lg-mobile": ["Space Grotesk"],
+                      "title-md": ["Space Grotesk"],
+                      "label-caps": ["Space Grotesk"],
+                      "body-md": ["Space Grotesk"],
+                      "body-lg": ["Space Grotesk"],
+                      "mono-data": ["Space Grotesk"],
+                      "headline-xl": ["Space Grotesk"]
+              },
+              "fontSize": {
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                      "title-md": ["20px", {"lineHeight": "28px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                      "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.1em", "fontWeight": "700"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "mono-data": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                      "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+              }
+            },
+          },
+        }
+    </script>
+</head>
+<body class="font-body-md text-on-surface selection:bg-primary-container selection:text-on-primary-container">
+<div class="scanline"></div>
+<!-- Main Content Canvas -->
+<main class="min-h-screen" data-loading="true">
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-desktop h-16 bg-surface/80 backdrop-blur-md border-b border-outline-variant/30">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-primary" data-icon="terminal">terminal</span>
+<span class="font-headline-lg text-headline-lg font-bold text-primary tracking-tighter glitch-hover cursor-pointer">CYBERNET</span>
+</div>
+<nav class="hidden md:flex items-center gap-lg">
+<a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-all" href="/">iNVESTIGATION ANALYSIS</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-all" href="/frontend/timeline.html">TIMELINE_SUMMARY</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-all" href="/frontend/hosts.html">HOST_BEHAVIOUR</a>
+<a class="font-label-caps text-label-caps text-primary border-b-2 border-primary py-1" href="/frontend/reports.html">REPORTS</a>
+</nav>
+<div class="flex items-center gap-md">
+<button class="flex items-center gap-xs px-4 py-1.5 bg-primary/10 border border-primary/50 text-primary font-label-caps text-label-caps rounded-sm hover:bg-primary/20 active:scale-95 transition-all" onclick="location.href='/#select-pcap'">
+<span class="material-symbols-outlined text-[18px]" data-icon="security">security</span>
+<span>SELECT PCAP</span></button>
+<div class="flex gap-sm text-on-surface-variant">
+<a class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors" data-icon="notifications" href="/#notifications" title="Runtime logs and validation">notifications</a>
+<a class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors" data-icon="settings" href="/#settings" title="Replay settings">settings</a>
+</div>
+</div>
+</header>
+<div class="p-margin-mobile md:p-margin-desktop pt-20 max-w-[1440px] mx-auto">
+<!-- Strategic Header -->
+<div class="mb-lg flex flex-col md:flex-row md:items-end justify-between gap-md">
+<div>
+<div class="flex items-center gap-xs mb-xs">
+<div class="w-2 h-2 rounded-full bg-primary-container led-pulse"></div>
+<span class="font-label-caps text-primary-fixed-dim tracking-[0.2em]">MISSION CRITICAL</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">STRATEGIC BRIEFING</h1>
+</div>
+<div class="flex gap-sm">
+<div class="flex flex-col items-end">
+<span class="font-label-caps text-[10px] text-on-surface-variant">THREAT CLEARANCE</span>
+<span class="font-mono-data text-headline-lg text-primary-container">OSINT-VII</span>
+</div>
+</div>
+</div>
+<!-- Main Briefing Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-md">
+<!-- Left: Executive Investigation Report -->
+<div class="lg:col-span-8 flex flex-col gap-md">
+<section class="glass-panel tactical-border p-lg rounded-xl flex flex-col gap-lg">
+<div class="flex justify-between items-start">
+<h2 class="font-title-md text-primary-fixed-dim flex items-center gap-sm">
+<span class="material-symbols-outlined">description</span>
+                                EXECUTIVE INVESTIGATION REPORT
+                            </h2>
+<div class="px-sm py-xs bg-surface-container-highest border border-outline rounded font-mono-data text-xs">
+                                ID: 4492-BX-0
+                            </div>
+</div>
+<div class="space-y-lg overflow-y-auto max-h-[800px] pr-sm scrollbar-thin scrollbar-thumb-primary-container">
+<article>
+<h3 class="font-label-caps text-on-surface-variant mb-xs border-l-2 border-primary-container pl-sm">EXECUTIVE SUMMARY</h3>
+<p class="font-body-lg text-on-surface leading-relaxed">
+                                    The "Stellar Horizon" operation detected a sophisticated lateral movement attempt originating from internal segment G-14. Our telemetry indicates an advanced persistent threat (APT) pattern consistent with known subspace exfiltration tactics. The breach was neutralized within 140ms of initiation, but residual logic bombs were discovered in the secondary navigation array.
+                                </p>
+</article>
+<article>
+<h3 class="font-label-caps text-on-surface-variant mb-xs border-l-2 border-primary-container pl-sm">ASSESSMENT</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md mt-sm">
+<div class="p-sm bg-surface-container-low rounded border border-outline-variant/30">
+<span class="font-label-caps text-[10px] text-primary-fixed-dim block mb-xs">VECTOR</span>
+<p class="font-body-md">Encrypted tunnel via Protocol 808-X. Encapsulated payloads detected in legitimate beacon signals.</p>
+</div>
+<div class="p-sm bg-surface-container-low rounded border border-outline-variant/30">
+<span class="font-label-caps text-[10px] text-primary-fixed-dim block mb-xs">INTENT</span>
+<p class="font-body-md">Intellectual property theft focusing on next-gen warp drives and reactor telemetry.</p>
+</div>
+</div>
+</article>
+<article>
+<div class="flex flex-col md:flex-row gap-lg items-center bg-primary-container/5 p-md rounded-xl border border-primary-container/20">
+<div class="flex-1">
+<h3 class="font-label-caps text-on-surface-variant mb-xs">CONFIDENCE EXPLANATION</h3>
+<p class="font-body-md">Heuristic correlation engine indicates a 94.2% match with the "Nebula" threat actor cluster. Signal strength and TTPs (Tactics, Techniques, and Procedures) align perfectly with previous incursions into the Outer Rim sector.</p>
+</div>
+<div class="relative w-32 h-32 flex items-center justify-center">
+<svg class="w-full h-full transform -rotate-90">
+<circle class="text-surface-container-highest" cx="64" cy="64" fill="transparent" r="50" stroke="currentColor" stroke-width="8"></circle>
+<circle class="text-primary-container" cx="64" cy="64" fill="transparent" r="50" stroke="currentColor" stroke-dasharray="314" stroke-dashoffset="18" stroke-width="8"></circle>
+</svg>
+<span class="absolute font-headline-lg text-primary-container">94%</span>
+</div>
+</div>
+</article>
+<article>
+<h3 class="font-label-caps text-on-surface-variant mb-sm border-l-2 border-primary-container pl-sm">RECOMMENDED ACTIONS</h3>
+<ul class="space-y-sm">
+<li class="flex items-center gap-md p-sm bg-surface-container-high rounded border-l-4 border-primary-container">
+<span class="material-symbols-outlined text-primary-container">shield_with_heart</span>
+<span class="font-body-md">Rotate all Phase-Shift encryption keys across the central cluster.</span>
+</li>
+<li class="flex items-center gap-md p-sm bg-surface-container-high rounded border-l-4 border-primary-container">
+<span class="material-symbols-outlined text-primary-container">lock_reset</span>
+<span class="font-body-md">Initiate Level 3 deep-scan of the backup navigation databases.</span>
+</li>
+<li class="flex items-center gap-md p-sm bg-surface-container-high rounded border-l-4 border-error">
+<span class="material-symbols-outlined text-error">gavel</span>
+<span class="font-body-md">Quarantine Sector G-14 and isolate its subspace bridge immediately.</span>
+</li>
+</ul>
+</article>
+</div>
+</section>
+</div>
+<!-- Right: Telemetry & Detection -->
+<div class="lg:col-span-4 flex flex-col gap-md">
+<!-- Graph Analysis Telemetry -->
+<section class="glass-panel p-md rounded-xl flex flex-col gap-sm">
+<h2 class="font-label-caps text-on-surface-variant flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]">hub</span>
+                            GRAPH ANALYSIS TELEMETRY
+                        </h2>
+<div class="grid grid-cols-2 gap-sm">
+<div class="p-sm bg-surface-container-highest rounded flex flex-col items-center">
+<span class="font-label-caps text-[10px] text-primary-fixed-dim">NODES</span>
+<span class="font-headline-lg text-primary-container">12,408</span>
+</div>
+<div class="p-sm bg-surface-container-highest rounded flex flex-col items-center">
+<span class="font-label-caps text-[10px] text-primary-fixed-dim">EDGES</span>
+<span class="font-headline-lg text-primary-container">84,212</span>
+</div>
+<div class="p-sm bg-surface-container-highest rounded flex flex-col items-center">
+<span class="font-label-caps text-[10px] text-primary-fixed-dim">DENSITY</span>
+<span class="font-headline-lg text-primary-container">0.021</span>
+</div>
+<div class="p-sm bg-surface-container-highest rounded flex flex-col items-center">
+<span class="font-label-caps text-[10px] text-error">RISK</span>
+<span class="font-headline-lg text-error">CRIT</span>
+</div>
+</div>
+<div class="mt-xs pt-xs border-t border-outline-variant/30">
+<span class="font-label-caps text-[10px] text-on-surface-variant block mb-sm">COMMUNITY DISTRIBUTION</span>
+<div class="h-24 flex items-end justify-between gap-1">
+<div class="bg-primary-container/40 w-full hover:bg-primary-container h-[40%] transition-all"></div>
+<div class="bg-primary-container/40 w-full hover:bg-primary-container h-[70%] transition-all"></div>
+<div class="bg-primary-container/40 w-full hover:bg-primary-container h-[20%] transition-all"></div>
+<div class="bg-primary-container/40 w-full hover:bg-primary-container h-[90%] transition-all"></div>
+<div class="bg-primary-container/40 w-full hover:bg-primary-container h-[55%] transition-all"></div>
+<div class="bg-primary-container/40 w-full hover:bg-primary-container h-[45%] transition-all"></div>
+<div class="bg-primary-container/40 w-full hover:bg-primary-container h-[30%] transition-all"></div>
+</div>
+</div>
+</section>
+<!-- Detection Summary -->
+<section class="glass-panel p-md rounded-xl flex flex-col gap-sm">
+<h2 class="font-label-caps text-on-surface-variant flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]">analytics</span>
+                            DETECTION FINDINGS
+                        </h2>
+<div class="space-y-sm">
+<div class="flex justify-between items-center p-sm bg-surface-container-low rounded border-l-2 border-primary-container">
+<div class="flex flex-col">
+<span class="font-body-md">Beaconing Activity</span>
+<span class="font-mono-data text-xs text-on-surface-variant">High-freq jitter detected</span>
+</div>
+<span class="font-mono-data text-primary-container">ACTIVE</span>
+</div>
+<div class="flex justify-between items-center p-sm bg-surface-container-low rounded border-l-2 border-primary-container">
+<div class="flex flex-col">
+<span class="font-body-md">Persistence Found</span>
+<span class="font-mono-data text-xs text-on-surface-variant">Reg-key modification</span>
+</div>
+<span class="font-mono-data text-primary-container">ACTIVE</span>
+</div>
+</div>
+<div class="mt-md">
+<span class="font-label-caps text-[10px] text-on-surface-variant block mb-xs uppercase">Protocol Distribution</span>
+<div class="relative h-40 flex items-center justify-center">
+<!-- Simulated Pie Chart -->
+<div class="w-28 h-28 rounded-full border-8 border-primary-container flex items-center justify-center relative">
+<div class="absolute inset-0 border-8 border-secondary-container rounded-full" style="clip-path: polygon(50% 50%, 0 0, 100% 0, 100% 30%, 50% 50%)"></div>
+<span class="font-mono-data text-xs">84% SSL</span>
+</div>
+<div class="absolute right-0 flex flex-col gap-xs text-[10px] font-mono-data">
+<div class="flex items-center gap-xs"><div class="w-2 h-2 bg-primary-container"></div>SSL/TLS</div>
+<div class="flex items-center gap-xs"><div class="w-2 h-2 bg-secondary-container"></div>UDP-G</div>
+<div class="flex items-center gap-xs"><div class="w-2 h-2 bg-surface-container-highest"></div>OTHER</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+<!-- Bottom: Export & Health -->
+<div class="mt-md grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-md">
+<!-- Export Center -->
+<div class="lg:col-span-3 glass-panel p-md rounded-xl flex flex-col gap-sm">
+<h2 class="font-label-caps text-on-surface-variant flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]">download</span>
+                        PREMIUM EXPORT CENTER
+                    </h2>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-sm">
+<button class="flex flex-col items-center justify-center gap-xs p-md bg-surface-container-high rounded border border-outline-variant/30 hover:bg-primary-container hover:text-on-primary-container transition-all group">
+<span class="material-symbols-outlined text-3xl group-hover:scale-110 transition-transform">picture_as_pdf</span>
+<span class="font-label-caps">INTEL PDF</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-xs p-md bg-surface-container-high rounded border border-outline-variant/30 hover:bg-primary-container hover:text-on-primary-container transition-all group">
+<span class="material-symbols-outlined text-3xl group-hover:scale-110 transition-transform">data_object</span>
+<span class="font-label-caps">JSON RAW</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-xs p-md bg-surface-container-high rounded border border-outline-variant/30 hover:bg-primary-container hover:text-on-primary-container transition-all group">
+<span class="material-symbols-outlined text-3xl group-hover:scale-110 transition-transform">table_chart</span>
+<span class="font-label-caps">CSV GRID</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-xs p-md bg-surface-container-high rounded border border-outline-variant/30 hover:bg-primary-container hover:text-on-primary-container transition-all group">
+<span class="material-symbols-outlined text-3xl group-hover:scale-110 transition-transform">share</span>
+<span class="font-label-caps">SECURE LINK</span>
+</button>
+</div>
+</div>
+<!-- System Health Indicators -->
+<div class="lg:col-span-1 glass-panel p-md rounded-xl flex flex-col gap-sm">
+<h2 class="font-label-caps text-on-surface-variant flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]">vital_signs</span>
+                        SYSTEM HEALTH
+                    </h2>
+<div class="space-y-sm">
+<div class="flex justify-between items-center text-xs">
+<span class="font-mono-data">SENSOR COVERAGE</span>
+<span class="text-primary-container font-bold">100%</span>
+</div>
+<div class="w-full bg-surface-container-highest h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary-container h-full w-full"></div>
+</div>
+<div class="flex justify-between items-center text-xs">
+<span class="font-mono-data">DB SNAPSHOT</span>
+<span class="text-primary-container font-bold">OPTIMAL</span>
+</div>
+<div class="w-full bg-surface-container-highest h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary-container h-full w-[92%]"></div>
+</div>
+<div class="flex justify-between items-center text-xs">
+<span class="font-mono-data">READINESS</span>
+<span class="text-primary-container font-bold">L-4</span>
+</div>
+<div class="flex gap-1">
+<div class="h-2 w-full bg-primary-container rounded"></div>
+<div class="h-2 w-full bg-primary-container rounded"></div>
+<div class="h-2 w-full bg-primary-container rounded"></div>
+<div class="h-2 w-full bg-primary-container rounded"></div>
+<div class="h-2 w-full bg-surface-container-highest rounded"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- System Footer (Status Bar) -->
+<footer class="mt-xl px-margin-desktop py-base bg-surface-container-lowest border-t border-outline-variant/10 text-[10px] font-mono-data flex justify-between items-center text-on-surface-variant">
+<div class="flex gap-md">
+<span>COORD: 0.114.2 // 9.443.1</span>
+<span>OS_VERSION: v4.11_S_HORIZON</span>
+<span class="text-primary-container">SYNC_OK</span>
+</div>
+<div class="flex gap-md">
+<span class="flex items-center gap-xs">
+<div class="w-1.5 h-1.5 rounded-full bg-primary-container led-pulse"></div>
+                    CONNECTION: ENCRYPTED_QUANTUM
+                </span>
+<span>SEC_LAYER: BRYNHILDR</span>
+</div>
+</footer>
+</main>
+<!-- FAB (Suppressed on Details Page but kept for reference if needed for other top-level pages) -->
+<!-- Not rendered per instructions for task-focused pages -->
+<script>
+        // Micro-interaction: Smooth scrolling for the report body
+        document.querySelectorAll('.scrollbar-thin').forEach(el => {
+            el.addEventListener('wheel', (e) => {
+                if (Math.abs(e.deltaY) > 0) {
+                    // Optional custom scrolling logic
+                }
+            });
+        });
+
+        // Atmospheric flicker effect on primary buttons occasionally
+        setInterval(() => {
+            const buttons = document.querySelectorAll('.glow-cyan');
+            const randomBtn = buttons[Math.floor(Math.random() * buttons.length)];
+            if (randomBtn) {
+                randomBtn.classList.add('flicker-effect');
+                setTimeout(() => randomBtn.classList.remove('flicker-effect'), 500);
+            }
+        }, 8000);
+</script>
+<script>
+(() => {
+    const API_BASE = window.REPLAY_API_BASE || '';
+
+    const api = async path => {
+        const response = await fetch(API_BASE + path, { headers: { Accept: 'application/json' } });
+        if (!response.ok) throw new Error(`${path} returned ${response.status}`);
+        return response.json();
+    };
+
+    const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    }[char]));
+
+    async function renderStrategicBriefing() {
+        const [summary, narratives, chapters, events, candidates, hypotheses, destinations, hosts, relationships, community, health] = await Promise.all([
+            api('/api/summary'),
+            api('/api/narratives'),
+            api('/api/chapters'),
+            api('/api/events'),
+            api('/api/candidates'),
+            api('/api/hypotheses'),
+            api('/api/destinations'),
+            api('/api/hosts'),
+            api('/api/relationships'),
+            api('/api/community'),
+            api('/api/artifacts/health')
+        ]);
+        const primary = narratives[0] || {};
+        const candidate = candidates[0] || {};
+        const hypothesis = hypotheses[0] || {};
+        const destinationIp = hypothesis.metadata?.relationship_destination || summary.primary_destination;
+        const destination = destinations.find(item => item.ip === destinationIp) || destinations[0] || {};
+        const selectedHost = candidate.host || primary.host || summary.top_host;
+        const host = hosts.find(item => item.ip === selectedHost) || {};
+        const relatedRelationships = relationships
+            .filter(item => item.source === selectedHost || item.target === selectedHost)
+            .sort((left, right) => Number(right.risk || 0) - Number(left.risk || 0));
+        const main = document.querySelector('main');
+        const highEvents = events.filter(event => ['HIGH', 'CRITICAL'].includes(String(event.severity).toUpperCase()));
+        const hostEvents = events.filter(event => event.host === selectedHost || (event.related_hosts || []).includes(selectedHost)).slice(-12).reverse();
+        const reportData = buildReportDto({
+            summary,
+            primary,
+            candidate,
+            hypothesis,
+            destination,
+            host,
+            relationships: relatedRelationships.slice(0, 10),
+            chapters,
+            highEvents,
+            hostEvents,
+            community,
+            health
+        });
+
+        const report = document.createElement('section');
+        report.className = 'px-margin-mobile md:px-margin-desktop py-lg max-w-[1440px] mx-auto';
+        report.innerHTML = `
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-md">
+                <article class="lg:col-span-8 glass-panel tactical-border p-lg rounded-xl">
+                    <div class="flex justify-between items-start gap-md mb-lg">
+                        <div>
+                            <p class="font-label-caps text-label-caps text-primary mb-xs">EXECUTIVE INVESTIGATION REPORT</p>
+                            <h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">${escapeHtml(reportData.title)}</h1>
+                        </div>
+                        <div class="px-sm py-xs bg-surface-container-highest border border-outline rounded font-mono-data text-xs text-primary">
+                            CONF ${Math.round(reportData.confidence || 0)}%
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-sm mb-lg">
+                        ${metric('HOST', reportData.host || '--')}
+                        ${metric('DESTINATION', reportData.destination || '--')}
+                        ${metric('PRIORITY', reportData.priority || '--')}
+                        ${metric('RISK', Number(reportData.risk || 0).toFixed(1))}
+                    </div>
+                    <div class="space-y-md font-body-md text-on-surface-variant leading-relaxed">
+                        <p>${escapeHtml(reportData.executive_summary)}</p>
+                        <p>${escapeHtml(reportData.analytic_inference)}</p>
+                    </div>
+                    <div class="mt-lg">
+                        <h2 class="font-title-lg text-title-lg text-primary mb-sm">CITED_EVIDENCE_CHAIN</h2>
+                        <div class="bg-surface-container-low border border-primary/20 p-md rounded">
+                            <p class="font-body-sm text-on-surface-variant mb-sm">${escapeHtml(hypothesis.confidence_explanation || 'No confidence explanation returned.')}</p>
+                            ${chipBlock('SUPPORTING_EVIDENCE', hypothesis.supporting_evidence || [])}
+                            ${chipBlock('CONTRADICTORY_EVIDENCE', hypothesis.contradictory_evidence || [])}
+                            <div class="mt-md grid grid-cols-1 md:grid-cols-2 gap-sm">
+                                ${(reportData.citations || []).map(citation => `
+                                    <div class="bg-black/30 border border-outline-variant/30 p-sm rounded min-w-0">
+                                        <div class="font-label-caps text-[10px] text-primary text-field">${escapeHtml(citation.source)}</div>
+                                        <div class="font-body-sm text-on-surface-variant text-field">${escapeHtml(citation.detail)}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-lg">
+                        <h2 class="font-title-lg text-title-lg text-primary mb-sm">HOST_AND_DESTINATION_CONTEXT</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-sm">
+                            ${metric('HOSTNAME', host.hostname || candidate.host_summary?.hostname || '--')}
+                            ${metric('USER', host.user_identity || candidate.host_summary?.user_identity || '--')}
+                            ${metric('MAC', host.mac_address || candidate.host_summary?.mac_address || '--')}
+                            ${metric('ROLE', host.role || candidate.host_role || '--')}
+                            ${metric('DOMAIN', hypothesis.metadata?.domain || destination.domain || '--')}
+                            ${metric('CONSUMERS', destination.consumer_count ?? hypothesis.metadata?.destination_consumer_count ?? '--')}
+                            ${metric('RARITY', destination.rarity_score ?? hypothesis.metadata?.destination_rarity_score ?? '--')}
+                            ${metric('EXCLUSIVITY', destination.exclusivity_score ?? hypothesis.metadata?.destination_exclusivity_score ?? '--')}
+                        </div>
+                    </div>
+                    <div class="mt-lg">
+                        <h2 class="font-title-lg text-title-lg text-primary mb-sm">RELATED_RELATIONSHIPS</h2>
+                        <div class="space-y-xs">
+                            ${relatedRelationships.slice(0, 6).map(item => `
+                                <div class="grid grid-cols-12 gap-xs bg-surface-container-low/70 border border-outline-variant/30 p-sm rounded font-mono-data text-xs">
+                                    <span class="col-span-4 text-primary text-field">${escapeHtml(item.source)}</span>
+                                    <span class="col-span-1 text-outline">-></span>
+                                    <span class="col-span-4 text-tertiary text-field">${escapeHtml(item.target)}</span>
+                                    <span class="col-span-2 text-on-surface-variant text-field">${escapeHtml((item.protocols || []).join(','))}</span>
+                                    <span class="col-span-1 ${Number(item.risk || 0) >= 35 ? 'text-error' : 'text-outline'}">${Number(item.risk || 0).toFixed(0)}</span>
+                                </div>
+                            `).join('') || '<div class="font-body-sm text-outline">No host relationships returned.</div>'}
+                        </div>
+                    </div>
+                    <div class="mt-lg">
+                        <h2 class="font-title-lg text-title-lg text-primary mb-sm">PRIORITY_EXPLANATION</h2>
+                        <pre class="bg-black/40 border border-outline-variant/30 p-sm text-xs overflow-auto whitespace-pre-wrap wrap-anywhere">${escapeHtml(JSON.stringify(candidate.priority_explanation || {}, null, 2))}</pre>
+                    </div>
+                    <div class="mt-lg">
+                        <h2 class="font-title-lg text-title-lg text-primary mb-sm">NEGATIVE_FINDINGS_AND_CAVEATS</h2>
+                        <ul class="space-y-xs font-body-sm text-on-surface-variant">
+                            ${(reportData.caveats || []).map(item => `<li class="border-l border-outline-variant/60 pl-sm">${escapeHtml(item)}</li>`).join('')}
+                        </ul>
+                    </div>
+                    <div class="mt-lg">
+                        <h2 class="font-title-lg text-title-lg text-primary mb-sm">RECOMMENDED_ACTIONS</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-sm">
+                            ${(reportData.recommended_actions || []).map(action => `
+                                <label class="bg-surface-container-low border border-primary/20 p-sm rounded flex gap-sm">
+                                    <input type="checkbox"><span class="font-mono-data text-mono-data text-on-surface text-field">${escapeHtml(action)}</span>
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="mt-lg flex gap-sm">
+                        <button class="px-sm py-xs bg-primary-container text-on-primary font-label-caps text-label-caps rounded-sm" id="copy-report">COPY_MARKDOWN</button>
+                        <button class="px-sm py-xs border border-primary/40 text-primary font-label-caps text-label-caps rounded-sm" id="export-report">EXPORT_JSON</button>
+                    </div>
+                </article>
+                <aside class="lg:col-span-4 flex flex-col gap-md">
+                    <div class="glass-panel p-md rounded-xl">
+                        <div class="font-label-caps text-label-caps text-outline">GRAPH_HEALTH</div>
+                        <div class="font-headline-lg text-headline-lg text-primary">${summary.node_count || community.graph_nodes || 0}</div>
+                        <div class="font-mono-data text-xs text-outline">nodes / ${community.classified_nodes || 0} classified</div>
+                    </div>
+                    <div class="glass-panel p-md rounded-xl">
+                        <div class="font-label-caps text-label-caps text-outline">CAPTURE_SCOPE</div>
+                        <div class="font-headline-lg text-headline-lg text-tertiary">${summary.frame_count || 0}</div>
+                        <div class="font-mono-data text-xs text-outline">${events.length} events / ${chapters.length} chapters</div>
+                    </div>
+                    <div class="glass-panel p-md rounded-xl">
+                        <div class="font-label-caps text-label-caps text-outline">HIGH_SIGNAL_EVENTS</div>
+                        <div class="font-headline-lg text-headline-lg text-error">${highEvents.length}</div>
+                    </div>
+                    <div class="glass-panel p-md rounded-xl">
+                        <div class="font-label-caps text-label-caps text-outline mb-sm">VALIDATION_STATE</div>
+                        ${Object.entries(summary.validations || {}).map(([key, value]) => `
+                            <div class="flex justify-between font-mono-data text-xs py-1 border-b border-outline-variant/20">
+                                <span class="text-field">${escapeHtml(key)}</span><span class="${value ? 'text-primary' : 'text-error'}">${value ? 'VALID' : 'CHECK'}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="glass-panel p-md rounded-xl">
+                        <div class="font-label-caps text-label-caps text-outline mb-sm">RECENT_HOST_EVENTS</div>
+                        <div class="space-y-xs max-h-[260px] overflow-y-auto pr-xs">
+                            ${hostEvents.map(event => `
+                                <a href="/?time=${encodeURIComponent(event.timestamp)}" class="block bg-surface-container-low/60 border border-outline-variant/20 p-xs rounded">
+                                    <div class="font-mono-data text-[10px] text-primary text-field">${new Date(event.timestamp).toISOString().slice(11,19)} ${escapeHtml(event.type)}</div>
+                                    <div class="font-body-sm text-on-surface-variant text-field">${escapeHtml(event.description)}</div>
+                                </a>
+                            `).join('') || '<div class="font-body-sm text-outline">No host events returned.</div>'}
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        `;
+        const header = main.querySelector('header');
+        main.replaceChildren(...[header, report].filter(Boolean));
+        document.getElementById('copy-report').addEventListener('click', () => navigator.clipboard?.writeText(markdownReport(reportData)));
+        document.getElementById('export-report').addEventListener('click', () => downloadJson('investigation-report.json', reportData));
+        main.removeAttribute('data-loading');
+    }
+
+    function metric(label, value) {
+        return `<div class="bg-surface-container-low p-sm border border-outline-variant/30 rounded min-w-0"><div class="font-label-caps text-[10px] text-outline wrap-anywhere">${escapeHtml(label)}</div><div class="font-mono-data text-primary text-field">${escapeHtml(value)}</div></div>`;
+    }
+
+    function chipBlock(label, items) {
+        return `<div class="mb-sm min-w-0"><div class="font-label-caps text-[10px] text-outline mb-xs wrap-anywhere">${label}</div><div class="flex flex-wrap gap-xs min-w-0">${items.length ? items.map(item => `<span class="px-xs py-1 bg-surface-variant/50 rounded text-[10px] font-mono-data border border-outline-variant text-field max-w-full">${escapeHtml(item)}</span>`).join('') : '<span class="text-xs text-outline">none observed</span>'}</div></div>`;
+    }
+
+    function buildReportDto(context) {
+        const { summary, primary, candidate, hypothesis, destination, host, relationships, chapters, highEvents, hostEvents, community, health } = context;
+        const reportHost = candidate.host || primary.host || summary.top_host || host.ip || 'Unknown';
+        const reportDestination = destination.ip || hypothesis.metadata?.relationship_destination || summary.primary_destination || 'Unknown';
+        const domain = hypothesis.metadata?.domain;
+        const confidence = candidate.confidence || hypothesis.confidence || primary.confidence || 0;
+        const executiveSummary = primary.executive_summary
+            || `${reportHost} is the leading investigation subject for this capture. The strongest current finding is external web activity toward ${domain ? `${domain} at ` : ''}${reportDestination}.`;
+        const analyticInference = hypothesis.summary
+            ? `Inference: ${hypothesis.summary}. This is supported by capture-derived relationship, domain, rarity, and host-risk context.`
+            : 'Inference: no high-confidence Layer 5 hypothesis was emitted; preserve this report as capture context rather than a confirmed detection.';
+        const recommendedActions = candidate.recommended_actions?.length
+            ? candidate.recommended_actions
+            : (primary.recommended_actions?.length ? primary.recommended_actions : ['inspect endpoint', 'review endpoint telemetry', 'investigate destination', 'preserve packet evidence']);
+
+        return {
+            title: `HOST ${reportHost}`,
+            host: reportHost,
+            destination: reportDestination,
+            domain: domain || null,
+            priority: candidate.priority || primary.priority || hypothesis.priority_level || 'LOW',
+            confidence,
+            risk: candidate.risk || host.risk || 0,
+            executive_summary: executiveSummary,
+            analytic_inference: analyticInference,
+            supporting_evidence: hypothesis.supporting_evidence || [],
+            contradictory_evidence: hypothesis.contradictory_evidence || [],
+            confidence_explanation: hypothesis.confidence_explanation || '',
+            priority_explanation: candidate.priority_explanation || {},
+            recommended_actions: recommendedActions,
+            citations: [
+                { source: 'output/host_profiles.ndjson', detail: `${reportHost} role=${host.role || candidate.host_role || 'UNKNOWN'} risk=${Number(host.risk || candidate.risk || 0).toFixed(1)} hostname=${host.hostname || candidate.host_summary?.hostname || 'unknown'}` },
+                { source: 'output/relationships.ndjson', detail: `${relationships.length} relationships involving ${reportHost}; primary destination ${reportDestination}` },
+                { source: 'output/layer5_hypotheses.ndjson or backend context fallback', detail: hypothesis.hypothesis_id || 'No hypothesis identifier returned' },
+                { source: 'output/timeline_events.ndjson', detail: `${hostEvents.length} recent host events available for replay pivot` },
+            ],
+            caveats: [
+                ...(hypothesis.contradictory_evidence || []).map(item => `Contradictory evidence observed: ${item}.`),
+                summary.validations?.layer6_ready === false ? 'Layer 6 readiness is false for this capture because no native Layer 5 hypothesis/candidate artifact was produced; this report may use backend context fallback.' : 'Layer 6 readiness validation did not report a blocking issue.',
+                highEvents.length === 0 ? 'No HIGH or CRITICAL timeline events were emitted; confidence depends on relationship and host-context evidence.' : `${highEvents.length} high-signal timeline events are available for corroboration.`,
+                community.unclassified_nodes ? `${community.unclassified_nodes} graph nodes were unclassified.` : 'Graph community audit reports zero unclassified nodes.',
+            ],
+            relationships,
+            chapters: chapters.map(chapter => ({ id: chapter.id, title: chapter.title, severity: chapter.severity, start_time: chapter.start_time, end_time: chapter.end_time })),
+            validation: {
+                summary: summary.validations || {},
+                artifact_health: health,
+            },
+        };
+    }
+
+    function markdownReport(report) {
+        return `# Investigation Report
+
+## Primary Finding
+
+- Host: ${report.host}
+- Destination: ${report.destination}
+- Domain: ${report.domain || 'Unknown'}
+- Priority: ${report.priority}
+- Confidence: ${Math.round(report.confidence || 0)}%
+- Risk: ${Number(report.risk || 0).toFixed(1)}
+
+## Executive Summary
+
+${report.executive_summary}
+
+${report.analytic_inference}
+
+## Evidence
+
+${(report.supporting_evidence || []).map(item => `- Supporting: ${item}`).join('\n') || '- No supporting evidence returned.'}
+${(report.contradictory_evidence || []).map(item => `- Contradictory: ${item}`).join('\n') || '- No contradictory evidence returned.'}
+
+## Citations
+
+${(report.citations || []).map(item => `- ${item.source}: ${item.detail}`).join('\n')}
+
+## Caveats
+
+${(report.caveats || []).map(item => `- ${item}`).join('\n')}
+
+## Recommended Actions
+
+${(report.recommended_actions || []).map(item => `- [ ] ${item}`).join('\n')}
+`;
+    }
+
+    function downloadJson(filename, payload) {
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(link.href);
+    }
+
+    renderStrategicBriefing().catch(error => {
+        const main = document.querySelector('main');
+        const panel = document.createElement('section');
+        panel.className = 'px-margin-mobile md:px-margin-desktop py-lg max-w-[1440px] mx-auto text-error font-mono-data text-mono-data';
+        panel.textContent = `REPLAY_BACKEND_OFFLINE: ${error.message}`;
+        const header = main.querySelector('header');
+        main.replaceChildren(...[header, panel].filter(Boolean));
+        main.removeAttribute('data-loading');
+    });
+})();
+</script>
+</body></html>

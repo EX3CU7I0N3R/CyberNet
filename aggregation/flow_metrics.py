@@ -27,6 +27,11 @@ class EnrichedFlow(BaseModel):
     last_seen_sequence: int = 0
     application_protocol: str
     app_confidence: float
+    initiator_mac: Optional[str] = None
+    responder_mac: Optional[str] = None
+    observed_domains: List[str] = Field(default_factory=list)
+    nbns_names: List[str] = Field(default_factory=list)
+    kerberos_cnames: List[str] = Field(default_factory=list)
     syn_count: int = 0
     ack_count: int = 0
     rst_count: int = 0
@@ -319,6 +324,11 @@ def compute_flow_metrics(
             last_seen_sequence=flow.last_seen_sequence,
             application_protocol=flow.application_protocol,
             app_confidence=flow.app_confidence,
+            initiator_mac=flow.initiator_mac,
+            responder_mac=flow.responder_mac,
+            observed_domains=flow.observed_domains,
+            nbns_names=flow.nbns_names,
+            kerberos_cnames=flow.kerberos_cnames,
             syn_count=flow.syn_count,
             ack_count=flow.ack_count,
             rst_count=flow.rst_count,

@@ -8,6 +8,7 @@ class HostProfile(BaseModel):
     mac_address: Optional[str] = None
     hostname: Optional[str] = None
     user_identity: Optional[str] = None
+    user_full_name: Optional[str] = None
 
     flow_count: int = 0
     external_flow_count: int = 0

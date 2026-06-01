@@ -219,6 +219,10 @@ class CanonicalEvent(BaseModel):
     tls_alpn: Optional[str] = None
     http_host: Optional[str] = None
     dns_query: Optional[str] = None
+    src_mac: Optional[str] = None
+    dst_mac: Optional[str] = None
+    nbns_name: Optional[str] = None
+    kerberos_cname: Optional[str] = None
     direction: str
     flow_id: str
 
@@ -267,6 +271,7 @@ def _extract_ip_event(packet, timestamp: str, total_bytes: int) -> Optional[Cano
     dst_ip = ip_layer.dst
     ttl = int(ip_layer.ttl) if hasattr(ip_layer, "ttl") else None
     transport_layer = ProtocolInference.infer_transport(packet)
+    src_mac, dst_mac = _extract_eth_pair(packet)
 
     src_port = None
     dst_port = None
@@ -313,6 +318,10 @@ def _extract_ip_event(packet, timestamp: str, total_bytes: int) -> Optional[Cano
         tls_alpn=enrichment["tls_alpn"],
         http_host=enrichment["http_host"],
         dns_query=enrichment["dns_query"],
+        src_mac=src_mac,
+        dst_mac=dst_mac,
+        nbns_name=_extract_layer_value(packet, "NBNS", "name"),
+        kerberos_cname=_extract_layer_value(packet, "KERBEROS", "cnamestring"),
         direction=classify_direction(src_ip, dst_ip),
         flow_id=generate_flow_id(src_ip, dst_ip, src_port or 0, dst_port or 0, transport_layer),
     )
@@ -322,6 +331,7 @@ def _extract_arp_event(packet, timestamp: str, total_bytes: int) -> Optional[Can
     arp_layer = packet["ARP"]
     src_ip = getattr(arp_layer, "src_proto_ipv4", "0.0.0.0")
     dst_ip = getattr(arp_layer, "dst_proto_ipv4", "255.255.255.255")
+    src_mac, dst_mac = _extract_eth_pair(packet)
 
     return CanonicalEvent(
         packet_index=0,
@@ -341,9 +351,33 @@ def _extract_arp_event(packet, timestamp: str, total_bytes: int) -> Optional[Can
         app_confidence=0.95,
         protocol_enrichment="transport_inference",
         protocol_evidence=["transport:arp"],
+        src_mac=src_mac,
+        dst_mac=dst_mac,
         direction=classify_direction(src_ip, dst_ip),
         flow_id=generate_flow_id(src_ip, dst_ip, 0, 0, "arp"),
     )
+
+
+def _extract_eth_pair(packet) -> tuple[Optional[str], Optional[str]]:
+    try:
+        eth_layer = packet["ETH"]
+        return getattr(eth_layer, "src", None), getattr(eth_layer, "dst", None)
+    except Exception:
+        return None, None
+
+
+def _extract_layer_value(packet, layer_name: str, field_name: str) -> Optional[str]:
+    layer = None
+    target_layer = layer_name.lower()
+    for packet_layer in getattr(packet, "layers", []):
+        if getattr(packet_layer, "layer_name", "").lower() == target_layer:
+            layer = packet_layer
+            break
+    if layer is None:
+        return None
+
+    value = getattr(layer, field_name, None)
+    return str(value) if value else None
 
 
 def _estimate_payload_bytes(total_bytes: int, transport_layer: str) -> int:

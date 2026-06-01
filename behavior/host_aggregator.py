@@ -35,6 +35,9 @@ def build_host_profiles(enriched_flows: Iterable) -> List[HostProfile]:
         graph_node = _build_graph_node(host_ip, metrics, risk_score, confidence, severity)
         profile = HostProfile(
             ip_address=host_ip,
+            mac_address=_first_sorted(state["macs"]),
+            hostname=_pick_hostname(state["hostnames"]),
+            user_identity=_first_sorted(state["users"]),
             **metrics,
             inferred_role=inferred_role,
             role=inferred_role,
@@ -66,6 +69,7 @@ def _apply_self_flow(host_states: Dict[str, Dict], flow):
     state["protocols"].add(flow.application_protocol)
     state["transports"].add(flow.transport_layer)
     state["peer_flows"][flow.responder_ip].append(flow)
+    _update_identity_state(state, flow, "initiator")
     if flow.responder_port is not None:
         state["ports"].add(flow.responder_port)
         state["service_ports"].add(flow.responder_port)
@@ -81,6 +85,7 @@ def _apply_flow_role(host_states: Dict[str, Dict], host_ip: str, flow, role: str
     state["protocols"].add(flow.application_protocol)
     state["transports"].add(flow.transport_layer)
     state["peer_flows"][peer_ip].append(flow)
+    _update_identity_state(state, flow, role)
 
     if role == "initiator":
         state["destinations"].add(flow.responder_ip)
@@ -118,6 +123,9 @@ def _new_host_state() -> Dict:
         "last_timeline_index": 0,
         "time_buckets": set(),
         "hourly_activity": defaultdict(int),
+        "macs": set(),
+        "hostnames": set(),
+        "users": set(),
     }
 
 
@@ -154,6 +162,48 @@ def _update_temporal_state(state: Dict, flow):
         bucket = timestamp.replace(minute=0, second=0, microsecond=0).isoformat().replace("+00:00", "Z")
         state["time_buckets"].add(bucket)
         state["hourly_activity"][bucket] += 1
+
+
+def _update_identity_state(state: Dict, flow, role: str):
+    mac = getattr(flow, "initiator_mac", None) if role == "initiator" else getattr(flow, "responder_mac", None)
+    if mac and mac != "ff:ff:ff:ff:ff:ff":
+        state["macs"].add(mac.lower())
+
+    for hostname in getattr(flow, "nbns_names", []) or []:
+        cleaned = _clean_hostname(hostname)
+        if cleaned:
+            state["hostnames"].add(cleaned)
+
+    if getattr(flow, "kerberos_cnames", None):
+        cname_owner = None
+        if flow.responder_port in {88, 464}:
+            cname_owner = "initiator"
+        elif flow.initiator_port in {88, 464}:
+            cname_owner = "responder"
+        if cname_owner == role:
+            for cname in getattr(flow, "kerberos_cnames", []) or []:
+                if cname:
+                    state["users"].add(str(cname))
+
+
+def _clean_hostname(value: str) -> str:
+    cleaned = str(value).split("<", 1)[0].strip()
+    if not cleaned or cleaned.upper() in {"WORKGROUP", "MSHOME"}:
+        return ""
+    return cleaned
+
+
+def _pick_hostname(hostnames: set[str]) -> str | None:
+    if not hostnames:
+        return None
+    for hostname in sorted(hostnames):
+        if "-" in hostname or hostname.upper().startswith("DESKTOP"):
+            return hostname
+    return sorted(hostnames)[0]
+
+
+def _first_sorted(values: set[str]) -> str | None:
+    return sorted(values)[0] if values else None
 
 
 def _build_graph_node(host_ip: str, metrics: Dict, risk_score: float, confidence: float, severity: str) -> HostGraphNode:

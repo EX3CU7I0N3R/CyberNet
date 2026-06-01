@@ -30,6 +30,11 @@ class DirectionalFlow(BaseModel):
     application_protocol: str
     app_confidence: float
     direction: str
+    initiator_mac: Optional[str] = None
+    responder_mac: Optional[str] = None
+    observed_domains: List[str] = Field(default_factory=list)
+    nbns_names: List[str] = Field(default_factory=list)
+    kerberos_cnames: List[str] = Field(default_factory=list)
     packet_count: int = 0
     duration_seconds: float = 0.0
     raw_duration_seconds: float = 0.0
@@ -62,6 +67,8 @@ def build_flows(canonical_events: List) -> Dict[str, DirectionalFlow]:
                 application_protocol=event.application_protocol,
                 app_confidence=event.app_confidence,
                 direction=event.direction,
+                initiator_mac=getattr(event, "src_mac", None),
+                responder_mac=getattr(event, "dst_mac", None),
             )
 
         flow = flows[flow_id]
@@ -83,6 +90,7 @@ def build_flows(canonical_events: List) -> Dict[str, DirectionalFlow]:
             flow.responder_bytes += event.total_bytes
 
         _aggregate_tcp_flags(flow, event.tcp_flags)
+        _aggregate_context(flow, event)
         flow.packet_count += 1
 
     for flow in flows.values():
@@ -139,6 +147,42 @@ def _aggregate_tcp_flags(flow: DirectionalFlow, tcp_flags: Dict[str, bool]):
         flow.psh_count += 1
     if tcp_flags.get("urg"):
         flow.urg_count += 1
+
+
+def _aggregate_context(flow: DirectionalFlow, event):
+    if event.src_ip == flow.initiator_ip and getattr(event, "src_mac", None):
+        flow.initiator_mac = flow.initiator_mac or event.src_mac
+    if event.dst_ip == flow.responder_ip and getattr(event, "dst_mac", None):
+        flow.responder_mac = flow.responder_mac or event.dst_mac
+
+    for value in (getattr(event, "http_host", None), getattr(event, "dns_query", None), getattr(event, "tls_sni", None)):
+        normalized = _normalize_domain_value(value)
+        if normalized and normalized not in flow.observed_domains:
+            flow.observed_domains.append(normalized)
+
+    nbns_name = _clean_nbns_name(getattr(event, "nbns_name", None))
+    if nbns_name and nbns_name not in flow.nbns_names:
+        flow.nbns_names.append(nbns_name)
+
+    kerberos_cname = getattr(event, "kerberos_cname", None)
+    if kerberos_cname and kerberos_cname not in flow.kerberos_cnames:
+        flow.kerberos_cnames.append(kerberos_cname)
+
+
+def _normalize_domain_value(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    normalized = str(value).strip().lower()
+    if "://" in normalized:
+        normalized = normalized.split("://", 1)[1]
+    return normalized.split("/", 1)[0].strip(".") or None
+
+
+def _clean_nbns_name(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    name = str(value).split(",", 1)[0].split("<", 1)[0].strip()
+    return name or None
 
 
 def _compute_flow_metrics(flow: DirectionalFlow):
