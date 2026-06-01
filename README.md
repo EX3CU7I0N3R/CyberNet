@@ -38,6 +38,40 @@ The system can help answer:
 - What should an analyst inspect next?
 - Can the investigation be replayed visually?
 
+## Screenshots
+
+### Investigation Analysis
+
+![Investigation replay graph](docs/images/investigation-replay-graph.png)
+
+The main replay workspace shows the loaded PCAP, replay controls, event stream, chapter timeline, graph state, top host context, and relationship inspection.
+
+### Timeline Summary
+
+![Timeline summary](docs/images/timeline-summary.png)
+
+![Timeline event stream](docs/images/timeline-event-stream.png)
+
+The timeline page summarizes replay frames, duration, chapters, event volume, and exposes a filterable event stream for pivoting through the capture.
+
+### Host Behaviour
+
+![Host behaviour overview](docs/images/host-behaviour-overview.png)
+
+The host page ranks observed hosts, highlights investigation candidates, and keeps host identity, risk, evidence, destination intelligence, and storyline context together.
+
+### Reports
+
+![Reports overview](docs/images/reports-overview.png)
+
+![Report evidence context](docs/images/reports-evidence-context.png)
+
+![Report priority and caveats](docs/images/reports-priority-caveats.png)
+
+![Report actions](docs/images/reports-actions.png)
+
+The report page turns capture-derived context into an analyst handoff with cited evidence, validation state, host and destination context, caveats, recommendations, and copy/export actions.
+
 ## Current Status
 
 | Component | Status |
@@ -411,6 +445,10 @@ The markdown set is intentionally small:
 - `docs/DESIGN.md`: visual design tokens and Stitch-derived design reference
 
 Historical planning notes, committed virtualenv files, old Stitch exports, sample captures, and generated artifacts were removed from source control to keep the repository reviewable.
+
+## License
+
+CyberNet is released under the MIT License. See [LICENSE](LICENSE).
 
 ## Project Notes
 
