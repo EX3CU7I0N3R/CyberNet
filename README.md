@@ -1,49 +1,98 @@
-# PCAPModels
+# CyberNet
 
-PCAPModels is a behavioral network telemetry pipeline and replay console for PCAP investigation.
+CyberNet is a PCAP investigation platform that turns packet captures into behavioral findings, host profiles, timelines, narratives, and replayable investigation artifacts.
 
-It parses a capture, builds behavioral host and relationship models, generates investigation hypotheses and narratives, converts the result into replay artifacts, and serves a tactical web frontend for analyst review.
+The project started from a practical investigation question:
 
-The current workflow is:
+> After opening a PCAP, how do you move from packets to an investigation?
 
-1. Start the Layer 8 backend.
-2. Open the frontend.
-3. Click `SELECT PCAP`.
-4. Choose a `.pcap`, `.pcapng`, or `.cap` file.
-5. The backend runs the full analysis pipeline and reloads the replay console.
+Most packet tools are excellent at showing traffic. CyberNet focuses on the next step: progressively transforming raw telemetry into richer investigation context so an analyst can understand which hosts matter, which destinations deserve attention, when behavior emerged, what evidence supports a finding, and what to inspect next.
 
-The frontend never reads NDJSON artifacts directly. It consumes backend DTOs from `/api/...`.
+CyberNet is not a Wireshark replacement. It is a layered analysis and replay system built around behavioral modeling, graph state, evidence explainability, and an analyst-facing frontend.
+
+## What CyberNet Does
+
+CyberNet transforms captures through this pipeline:
+
+```text
+PCAP
+-> normalized events
+-> directional flows
+-> behavioral analytics
+-> host intelligence
+-> relationship graph
+-> investigation candidates
+-> narratives
+-> timeline events
+-> replay frames
+-> frontend investigation workspace
+```
+
+The system can help answer:
+
+- Which hosts deserve attention?
+- What behavior is unusual?
+- Which destinations are rare or exclusive?
+- How did activity evolve over time?
+- What evidence supports or contradicts the finding?
+- What should an analyst inspect next?
+- Can the investigation be replayed visually?
+
+## Current Status
+
+| Component | Status |
+|---|---|
+| Packet normalization | Complete |
+| Flow intelligence | Complete |
+| Behavioral metrics | Complete |
+| Host profiling | Complete |
+| Relationship modeling | Complete |
+| Graph state construction | Complete |
+| Temporal snapshots | Complete |
+| Layer 5 hypotheses and candidates | Complete |
+| Layer 6 narratives | Complete |
+| Layer 7 replay artifacts | Complete |
+| Layer 8 replay backend | Complete |
+| Stitch-derived frontend | Active |
+
+The active app is served by FastAPI and uses static HTML/CSS/JavaScript frontend pages. There is no frontend build step.
 
 ## Requirements
 
 - Windows PowerShell
 - Python 3.10+
 - Wireshark/TShark installed and available on `PATH`
-- A local PCAP file
+- A local `.pcap`, `.pcapng`, or `.cap` file
 
-Python dependencies are managed through `requirements.txt`.
+Python dependencies are listed in `requirements.txt`.
 
 ```powershell
-cd c:\Users\siddh\VSCodeFiles\PCAPModels
-python -m venv .
-& .\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
+cd C:\Users\siddh\VSCodeFiles\PCAPModels
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
 Important packages:
 
-- `pyshark` for PCAP parsing
+- `pyshark` for PCAP parsing through TShark
 - `scapy` for packet tooling
 - `pandas` for tabular exports
+- `pydantic` for data models and DTOs
 - `fastapi` and `uvicorn` for the replay backend
 - `python-multipart` for browser PCAP uploads
+
+Confirm TShark is visible:
+
+```powershell
+tshark --version
+```
 
 ## Start The App
 
 Start the backend:
 
 ```powershell
-.\Scripts\python.exe -m uvicorn layer8_backend.api.app:app --host 127.0.0.1 --port 8000
+.\.venv\Scripts\python.exe -m uvicorn layer8_backend.api.app:app --host 127.0.0.1 --port 8000
 ```
 
 Open:
@@ -52,56 +101,125 @@ Open:
 http://localhost:8000/
 ```
 
-The first screen should show the tactical replay workspace with a `SELECT PCAP` button in the top navigation.
+Click `SELECT PCAP`, choose a capture, and wait for analysis to complete. The backend runs the full pipeline, writes artifacts to `output/`, reloads the artifact provider, and updates all frontend pages.
 
-## Analyze A PCAP From The UI
+## Analyze From The CLI
 
-1. Open `http://localhost:8000/`.
-2. Click `SELECT PCAP`.
-3. Select a `.pcap`, `.pcapng`, or `.cap` file.
-4. Wait for analysis to complete.
-5. The replay workspace reloads from the newly generated artifacts.
+The UI is the preferred workflow, but the analysis pipeline can still be run directly:
 
-The upload route stores captures under:
-
-```text
-output/uploads/
+```powershell
+.\.venv\Scripts\python.exe main.py path\to\capture.pcap --no-csv
 ```
 
-After analysis, the backend reloads its artifact provider so all frontend pages reflect the selected PCAP.
+Artifacts are written to:
+
+```text
+output/
+```
+
+Use `--no-csv` to skip CSV exports. NDJSON export is enabled by default unless `--no-ndjson` is passed.
 
 ## Frontend Pages
 
 | Page | Route | Purpose |
 |---|---|---|
-| Investigation Analysis | `/` | 3D replay workspace, PCAP selection, play/pause, seek, event feed, chapter rail, node/relationship inspection |
-| Timeline Summary | `/frontend/timeline.html` | Capture summary cards, chapter rail, filterable event stream, replay seek links |
-| Host Behaviour | `/frontend/hosts.html` | Ranked host list, host profile, evidence, destination intelligence, event timeline, recommended actions |
-| Reports | `/frontend/reports.html` | Executive narrative, primary finding, evidence chain, confidence details, copy/export actions |
+| Investigation Analysis | `/` | 3D replay workspace, PCAP selection, playback, seeking, event feed, chapter navigation, node and relationship inspection |
+| Timeline Summary | `/frontend/timeline.html` | Capture summary cards, chapter rail, filterable event stream, replay pivots |
+| Host Behaviour | `/frontend/hosts.html` | Ranked host list, host profile, identity, evidence, destination intelligence, host events, recommended actions |
+| Reports | `/frontend/reports.html` | Analyst handoff report with findings, citations, caveats, evidence chain, copy/export actions |
 
-The top navigation is shared across all pages.
+The frontend consumes backend DTOs only. It never reads NDJSON artifacts directly.
 
 ## Main UI Controls
 
 Top navigation:
 
 - `SELECT PCAP`: opens the file picker and starts backend analysis.
-- Notification icon: opens artifact health and validation status.
-- Settings icon: opens current replay/session context and allows selecting another PCAP.
+- Notification icon: shows runtime logs, validation state, graph health, and artifact readiness.
+- Settings icon: shows replay context, appearance controls, speed preference, PCAP selection, and artifact cleanup.
 
 Replay controls:
 
-- Play/pause replay frames.
+- Play and pause replay frames.
 - Jump to first or last frame.
 - Change playback speed.
-- Seek along the timeline.
+- Seek through the timeline.
 - Click chapter segments to jump and inspect chapter context.
 
 Graph inspection:
 
 - Click a node to open host inspection.
 - Click an edge to open relationship inspection.
-- The primary suspicious destination relationship is highlighted when present in the replay frame.
+- Primary suspicious relationships are highlighted when present in the frame.
+
+## Architecture
+
+CyberNet is organized as a layered pipeline.
+
+### Layer 1: Traffic Normalization
+
+Converts packet captures into canonical packet events with normalized timestamps, addressing, protocol hints, replay sequence IDs, and selected identity fields such as MAC, NBNS hostnames, and Kerberos usernames when available.
+
+### Layer 2: Flow Intelligence
+
+Aggregates normalized events into directional flows, preserving timing, ports, byte counts, packet counts, observed domains, protocol enrichment, and identity context.
+
+### Layer 3: Behavioral Analytics
+
+Scores flow behavior using features such as periodicity, persistence, timing consistency, destination behavior, low-volume communication, and protocol mix.
+
+### Layer 4: Graph Intelligence
+
+Builds host profiles, relationships, graph nodes, graph edges, community classification, role inference, graph consistency audits, and temporal snapshots.
+
+### Layer 5: Investigation Engine
+
+Produces investigation hypotheses and candidates with confidence, severity, evidence, contradictory evidence, destination rarity, destination exclusivity, host risk, and priority scoring.
+
+### Layer 6: Narrative Engine
+
+Builds analyst-facing summaries, evidence explanations, caveats, investigation plans, and recommended actions.
+
+### Layer 7: Temporal Reconstruction
+
+Creates timeline events, activity phases, replay frames, host timelines, and replay indices.
+
+### Layer 7.5: Chapter Engine
+
+Groups timeline activity into major investigation chapters used for replay navigation and narrative structure.
+
+Example chapter types:
+
+1. Initial Network Activity
+2. Relationship Formation
+3. Persistent Communications
+4. External Communication
+5. Network Discovery
+6. Beaconing Indicators
+7. Investigation Priority
+
+### Layer 8: Replay Backend And Frontend
+
+Serves replay frames, timeline events, chapters, host context, relationships, destinations, narratives, candidates, hypotheses, health status, and WebSocket replay commands through a backend API. The frontend renders a tactical analyst workspace from those DTOs.
+
+## Repository Structure
+
+```text
+aggregation/          Flow construction and behavioral flow metrics
+behavior/             Host profiles, role inference, graph state, relationships
+docs/                 Architecture, frontend, and design documentation
+frontend/             Static HTML/CSS/JS investigation UI
+graph/                Community classification
+ingestion/            PCAP parsing and protocol enrichment
+layer5/               Hypotheses, deltas, candidates, confidence, exports
+layer6/               Narratives, reasoning, plans, recommendations
+layer7/               Events, phases, chapters, replay frames
+layer8_backend/       FastAPI app, APIs, providers, services, WebSocket
+tests/                Unit and stabilization tests
+output/               Generated artifacts, ignored by Git
+main.py               CLI pipeline entrypoint
+stabilization_audit.py Layer 4/5 audit artifact generation
+```
 
 ## Backend API
 
@@ -126,11 +244,11 @@ Context API:
 | Method | Route | Description |
 |---|---|---|
 | `GET` | `/api/summary` | Capture totals, top host, primary destination, validation summary |
-| `GET` | `/api/hosts` | Ranked hosts with risk, role, candidate status, finding count |
-| `GET` | `/api/hosts/{ip}` | Host timeline, events, chapters, risk, role |
-| `GET` | `/api/hypotheses` | Layer 5 hypotheses with evidence and confidence explanations |
+| `GET` | `/api/hosts` | Ranked hosts with role, risk, identity, candidate status, and finding count |
+| `GET` | `/api/hosts/{ip}` | Host details, events, chapters, role, risk, hostname, MAC, user |
+| `GET` | `/api/hypotheses` | Hypotheses with evidence, contradictions, confidence explanations, rarity, exclusivity |
 | `GET` | `/api/candidates` | Investigation candidates with priority explanations and actions |
-| `GET` | `/api/relationships?host=...` | Host relationship context and destination evidence |
+| `GET` | `/api/relationships?host=...` | Relationship context and hypothesis evidence |
 | `GET` | `/api/destinations` | Ranked destination intelligence |
 | `GET` | `/api/community` | Community distribution and node classification audit |
 | `GET` | `/api/artifacts/health` | Stabilization and readiness validation status |
@@ -138,26 +256,31 @@ Context API:
 | `GET` | `/api/chapters` | Major replay chapters |
 | `GET` | `/api/narratives` | Investigation narratives |
 | `GET` | `/api/phases` | Activity phases |
+| `GET` | `/api/runtime/logs` | Backend log and validation summary for the notification panel |
 
-## Command-Line Analysis
+WebSocket replay actions:
 
-The UI is the preferred workflow now, but the pipeline can still be run directly:
-
-```powershell
-.\Scripts\python.exe main.py sample.pcap --no-csv
+```json
+{ "action": "play" }
 ```
 
-Artifacts are written to:
-
-```text
-output/
+```json
+{ "action": "pause" }
 ```
 
-Use `--no-csv` to skip CSV exports. NDJSON export is enabled by default unless `--no-ndjson` is passed.
+```json
+{ "action": "seek", "frame": 124 }
+```
+
+```json
+{ "action": "speed", "value": 8 }
+```
 
 ## Output Artifacts
 
-Important generated artifacts include:
+Generated artifacts live under `output/` and are ignored by Git.
+
+Core artifacts:
 
 - `normalized_packets.ndjson`
 - `flows.ndjson`
@@ -175,10 +298,11 @@ Important generated artifacts include:
 - `activity_phases.ndjson`
 - `host_timelines.ndjson`
 - `major_chapters.ndjson`
+- `chapter_index.json`
 - `replay_frames.ndjson`
 - `replay_index.json`
 
-Stabilization and readiness outputs:
+Audit and readiness artifacts:
 
 - `community_audit.csv`
 - `graph_consistency.json`
@@ -188,56 +312,86 @@ Stabilization and readiness outputs:
 - `snapshot_quality.json`
 - `layer6_readiness.json`
 
-## Current Layer Map
+Uploaded captures are stored under:
 
-- Layers 1-4: packet normalization, flows, host profiles, relationship modeling, graph state, temporal snapshots
-- Layer 5: attack hypotheses, confidence hardening, destination rarity/exclusivity, investigation candidates
-- Layer 6: analyst narratives, evidence summaries, recommendations
-- Layer 7: timeline events, activity phases, replay frames, host timelines
-- Layer 7.5: major chapters and chapter index
-- Layer 8A/8B: replay backend, context APIs, WebSocket stream, Stitch-derived frontend integration
-
-## Validation
-
-Run the focused Layer 8 backend tests:
-
-```powershell
-.\Scripts\python.exe -m unittest tests.test_layer8_backend
+```text
+output/uploads/
 ```
 
-Run the broader stabilization suite:
+## Example Investigation Output
 
-```powershell
-.\Scripts\python.exe -m unittest tests.test_layer8_backend tests.test_layer75_chapters tests.test_layer7_events tests.test_layer7_phases tests.test_layer7_replay tests.test_layer7_index tests.test_layer6_quality tests.test_layer6_narratives tests.test_layer5_phase1 tests.test_sprint_a_architecture tests.test_stabilization_audit
+On a representative sample capture, CyberNet produced:
+
+```text
+104 host profiles
+201 host relationships
+717 timeline events
+326 activity phases
+499 replay frames
+7 investigation chapters
 ```
 
-Frontend JavaScript can be syntax-checked by extracting embedded scripts from `frontend/*.html` and running `node --check`. The current frontend is plain HTML/CSS/JS with Three.js loaded from CDN.
+Example finding:
+
+```text
+Host: 10.2.28.88
+Role: WORKSTATION
+Finding: Potential beaconing behavior
+Destination: 45.131.214.85
+Confidence: 92%
+```
+
+Another validation case surfaced:
+
+```text
+Host: 10.1.21.58
+Hostname: DESKTOP-ES9F3ML
+MAC: 00:21:5d:c8:0e:f2
+User: gwyatt
+Primary domain: whitepepper.su
+Primary destination: 153.92.1.49
+```
+
+## Testing
+
+Run the complete test suite:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover tests
+```
+
+Run focused Layer 8 backend tests:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest tests.test_layer8_backend
+```
+
+Syntax-check frontend scripts embedded in the HTML pages:
+
+```powershell
+node -e "const fs=require('fs'); for (const f of ['frontend/index.html','frontend/timeline.html','frontend/hosts.html','frontend/reports.html']) { const h=fs.readFileSync(f,'utf8'); const s=[...h.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).join('\n'); new Function(s); console.log(f + ': ok'); }"
+```
 
 ## Troubleshooting
 
-If PCAP selection fails immediately:
-
-- Confirm `python-multipart` is installed:
+If PCAP upload fails immediately:
 
 ```powershell
-.\Scripts\python.exe -c "import multipart; print('ok')"
+.\.venv\Scripts\python.exe -c "import multipart; print('ok')"
 ```
 
 If PCAP parsing fails:
 
 - Confirm Wireshark/TShark is installed.
 - Confirm `tshark` is available on `PATH`.
-- Try running the CLI path directly:
+- Run the CLI path directly with the same capture.
 
-```powershell
-.\Scripts\python.exe main.py sample.pcap --no-csv
-```
+If the frontend appears stale:
 
-If the frontend loads old data:
-
-- Select the PCAP again from the UI.
-- Confirm the backend returned `200` from `/api/pcap/select`.
-- Refresh the browser after the analysis completes.
+- Refresh the page.
+- Check `/api/summary`.
+- Open the notification panel for validation and runtime logs.
+- Select the PCAP again if you intentionally want to replace the active capture.
 
 If port `8000` is already in use:
 
@@ -245,13 +399,23 @@ If port `8000` is already in use:
 Get-NetTCPConnection -LocalPort 8000 -State Listen
 ```
 
-Then either stop the owning process or run Uvicorn on another port.
+Stop the owning process or run Uvicorn on another port.
+
+## Documentation
+
+The markdown set is intentionally small:
+
+- `README.md`: setup, operation, architecture summary, APIs, testing
+- `docs/ARCHITECTURE.md`: layer and module reference
+- `docs/FRONTEND.md`: frontend behavior and UI integration notes
+- `docs/DESIGN.md`: visual design tokens and Stitch-derived design reference
+
+Historical planning notes, committed virtualenv files, old Stitch exports, sample captures, and generated artifacts were removed from source control to keep the repository reviewable.
 
 ## Project Notes
 
-- The frontend is intentionally single-file HTML per page for now.
-- Do not expose raw NDJSON directly to the browser.
 - Keep generated artifacts under `output/`.
-- Source Stitch template folders are retained separately; the active frontend lives under `frontend/`.
-- See `docs/FRONTEND_UX_CONTEXT_PLAN.md` for the UX/context plan.
-- See `docs/LAYER8A_STITCH_INTEGRATION.md` for replay API and frontend integration notes.
+- Keep virtual environments under `.venv/` or another ignored directory.
+- Do not commit PCAPs, generated NDJSON/CSV/JSON artifacts, cache folders, or installed packages.
+- The frontend is static HTML/CSS/JS by design for now.
+- The browser consumes backend DTOs only; raw NDJSON is an internal artifact format.
