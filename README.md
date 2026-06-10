@@ -1,5 +1,14 @@
 # CyberNet
 
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/FastAPI-Replay_Backend-009688?logo=fastapi&logoColor=white" alt="FastAPI replay backend">
+  <img src="https://img.shields.io/badge/TShark-PCAP_Analysis-1679A7?logo=wireshark&logoColor=white" alt="TShark PCAP analysis">
+  <img src="https://img.shields.io/badge/Frontend-HTML%20%7C%20CSS%20%7C%20JavaScript-F7DF1E?logo=javascript&logoColor=black" alt="Static HTML, CSS, and JavaScript frontend">
+  <img src="https://img.shields.io/badge/Codex-Assisted-000000?labelColor=000000&logo=openai&logoColor=white" alt="Codex Assisted">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="MIT License"></a>
+</p>
+
 CyberNet is a PCAP investigation platform that turns packet captures into behavioral findings, host profiles, timelines, narratives, and replayable investigation artifacts.
 
 The project started from a practical investigation question:

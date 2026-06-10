@@ -6,18 +6,20 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <!-- Adding OrbitControls from CDN -->
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&amp;family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
 <style>
         :root {
             --scanline-color: rgba(0, 229, 255, 0.015);
             --primary-glow: rgba(0, 229, 255, 0.4);
+            --panel-depth: 0 18px 50px rgba(0, 0, 0, 0.36), inset 0 1px 0 rgba(195, 245, 255, 0.035);
         }
         body {
             background-color: #05070A;
             color: #dce4e5;
             overflow: hidden;
             font-family: 'Space Grotesk', sans-serif;
+            font-feature-settings: "ss01" 1, "tnum" 1;
         }
 
         /* Ambient Effects */
@@ -39,9 +41,32 @@
         }
 
         .glass-panel {
-            background: rgba(8, 12, 17, 0.85);
+            background:
+                linear-gradient(180deg, rgba(195, 245, 255, 0.035), rgba(0, 229, 255, 0.01) 38%, rgba(8, 12, 17, 0.88)),
+                rgba(8, 12, 17, 0.85);
             backdrop-filter: blur(20px);
-            border: 1px solid rgba(132, 147, 150, 0.08);
+            border: 1px solid rgba(132, 147, 150, 0.14);
+            box-shadow: var(--panel-depth);
+        }
+
+        .brand-wordmark {
+            font-family: 'Orbitron', 'Space Grotesk', sans-serif;
+            letter-spacing: 0;
+            text-shadow: 0 0 22px rgba(0, 229, 255, 0.22);
+        }
+
+        .star-stage {
+            background:
+                radial-gradient(circle at 58% 44%, rgba(0, 229, 255, 0.09), transparent 22%),
+                radial-gradient(circle at 30% 70%, rgba(254, 201, 49, 0.035), transparent 18%);
+        }
+
+        .metric-label {
+            color: rgba(186, 201, 204, 0.62);
+        }
+
+        .metric-value {
+            color: rgba(220, 228, 229, 0.96);
         }
 
         .tactical-border {
@@ -214,8 +239,8 @@
                         "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
                         "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
                         "title-md": ["20px", {"lineHeight": "28px", "letterSpacing": "0.02em", "fontWeight": "500"}],
-                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
-                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "0", "fontWeight": "700"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "0", "fontWeight": "600"}],
                         "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.1em", "fontWeight": "700"}]
                     }
                 }
@@ -230,10 +255,10 @@
 <header class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-desktop h-16 bg-surface/80 backdrop-blur-md border-b border-outline-variant/30">
 <div class="flex items-center gap-xs">
 <span class="material-symbols-outlined text-primary" data-icon="terminal">terminal</span>
-<span class="font-headline-lg text-headline-lg font-bold text-primary tracking-tighter glitch-hover cursor-pointer">CYBERNET</span>
+<span class="brand-wordmark font-headline-lg text-headline-lg font-bold text-primary glitch-hover cursor-pointer">CYBERNET</span>
 </div>
 <nav class="hidden md:flex items-center gap-lg">
-<a class="font-label-caps text-label-caps text-primary border-b-2 border-primary py-1" href="/">iNVESTIGATION ANALYSIS</a>
+<a class="font-label-caps text-label-caps text-primary border-b-2 border-primary py-1" href="/">INVESTIGATION ANALYSIS</a>
 <a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-all" href="/frontend/timeline.html">TIMELINE_SUMMARY</a>
 <a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-all" href="/frontend/hosts.html">HOST_BEHAVIOUR</a>
 <a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-all" href="/frontend/reports.html">REPORTS</a>
@@ -262,7 +287,7 @@
 <div class="p-4 space-y-3 font-body-sm text-on-surface-variant" id="utility-body"></div>
 </aside>
 <!-- Main Content Layout -->
-<main class="flex h-screen pt-16 pb-[240px] overflow-hidden relative">
+<main class="star-stage flex h-screen pt-16 pb-[240px] overflow-hidden relative">
 <!-- Center: 3D SPATIAL NETWORK SPACE -->
 <section class="relative flex-grow overflow-hidden bg-black flicker-entrance" id="three-canvas-container">
 <div class="absolute inset-0 hud-overlay z-10 pointer-events-none"></div>
@@ -339,12 +364,12 @@
 <div class="flex gap-xl items-center font-mono-data">
 <div class="text-right">
 <span class="text-[9px] text-outline block">ELAPSED_SESSION</span>
-<span class="text-primary text-3xl font-bold tracking-tighter" id="main-time">--:--:--</span>
+<span class="text-primary text-3xl font-bold" id="main-time">--:--:--</span>
 </div>
 <div class="h-10 w-px bg-outline-variant/30"></div>
 <div class="text-right">
 <span class="text-[9px] text-outline block">TOTAL_STREAM</span>
-<span class="text-on-surface text-3xl font-bold tracking-tighter opacity-50" id="total-time">--:--:--</span>
+<span class="text-on-surface text-3xl font-bold opacity-50" id="total-time">--:--:--</span>
 </div>
 </div>
 </div>

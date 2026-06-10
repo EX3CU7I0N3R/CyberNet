@@ -5,7 +5,7 @@
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>CYBERNET | TIMELINE SUMMARY</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&amp;family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <style>
@@ -17,11 +17,32 @@
             background-size: cover, 100% 4px;
             overflow-x: hidden;
             color: #dce4e5;
+            font-feature-settings: "ss01" 1, "tnum" 1;
         }
 
         .glass-panel {
+            background:
+                linear-gradient(180deg, rgba(195, 245, 255, 0.035), rgba(0, 229, 255, 0.01) 38%, rgba(8, 12, 17, 0.88)),
+                rgba(8, 12, 17, 0.84);
             backdrop-filter: blur(16px);
-            border: 1px solid rgba(186, 201, 204, 0.1);
+            border: 1px solid rgba(186, 201, 204, 0.14);
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(195, 245, 255, 0.035);
+        }
+
+        .brand-wordmark {
+            font-family: 'Orbitron', 'Space Grotesk', sans-serif;
+            letter-spacing: 0;
+            text-shadow: 0 0 22px rgba(0, 229, 255, 0.22);
+        }
+
+        .star-panel {
+            background:
+                radial-gradient(circle at 74% 20%, rgba(0, 229, 255, 0.09), transparent 22%),
+                linear-gradient(180deg, rgba(195, 245, 255, 0.035), rgba(8, 12, 17, 0.88));
+        }
+
+        .hierarchy-dim {
+            opacity: 0.68;
         }
 
         .neon-border {
@@ -182,8 +203,8 @@
                         "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
                         "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
                         "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.1em", "fontWeight": "700"}],
-                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
-                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "0", "fontWeight": "700"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "0", "fontWeight": "600"}],
                         "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
                         "title-md": ["20px", {"lineHeight": "28px", "letterSpacing": "0.02em", "fontWeight": "500"}],
                         "mono-data": ["14px", {"lineHeight": "20px", "fontWeight": "500"}]
@@ -197,10 +218,10 @@
 <header class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-desktop h-16 bg-surface/80 backdrop-blur-md border-b border-outline-variant/30">
 <div class="flex items-center gap-xs">
 <span class="material-symbols-outlined text-primary" data-icon="terminal">terminal</span>
-<span class="font-headline-lg text-headline-lg font-bold text-primary tracking-tighter glitch-hover cursor-pointer">CYBERNET</span>
+<span class="brand-wordmark font-headline-lg text-headline-lg font-bold text-primary glitch-hover cursor-pointer">CYBERNET</span>
 </div>
 <nav class="hidden md:flex items-center gap-lg">
-<a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-all" href="/">iNVESTIGATION ANALYSIS</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-all" href="/">INVESTIGATION ANALYSIS</a>
 <a class="font-label-caps text-label-caps text-primary border-b-2 border-primary py-1" href="/frontend/timeline.html">TIMELINE_SUMMARY</a>
 <a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-all" href="/frontend/hosts.html">HOST_BEHAVIOUR</a>
 <a class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-all" href="/frontend/reports.html">REPORTS</a>
@@ -280,7 +301,7 @@
 <!-- Heatmap Center -->
 <div class="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-primary/10 rounded-full flex items-center justify-center">
 <div class="text-center">
-<div class="font-headline-xl text-headline-xl text-primary glow-cyan leading-tight tracking-tighter">1.24TB</div>
+<div class="font-headline-xl text-headline-xl text-primary glow-cyan leading-tight">1.24TB</div>
 <div class="font-label-caps text-label-caps text-outline tracking-widest">THREAT_PAYLOAD</div>
 </div>
 </div>
@@ -413,7 +434,7 @@
         const main = document.querySelector('main');
         const highEvents = events.filter(event => ['HIGH', 'CRITICAL'].includes(String(event.severity).toUpperCase()));
         const panel = document.createElement('section');
-        panel.className = 'relative z-20 glass-panel rounded-xl border border-primary/30 p-md mb-lg grid grid-cols-2 md:grid-cols-6 gap-md';
+        panel.className = 'relative z-20 glass-panel star-panel rounded-xl border border-primary/30 p-md mb-lg grid grid-cols-2 md:grid-cols-6 gap-md';
         panel.innerHTML = `${summaryCard('REPLAY_FRAMES', session.frame_count, 'text-primary')}${summaryCard('DURATION', `${Math.round(session.duration)}s`, 'text-on-surface')}${summaryCard('TOTAL_EVENTS', events.length, 'text-primary')}${summaryCard('HIGH_SIGNAL', highEvents.length, 'text-error')}${summaryCard('HYPOTHESES', hypotheses.length, 'text-tertiary')}${summaryCard('CANDIDATES', candidates.length, 'text-primary')}`;
         const chapterPanel = document.createElement('section');
         chapterPanel.className = 'relative z-20 glass-panel rounded-xl border border-outline-variant/40 p-md mb-lg';
@@ -437,7 +458,7 @@
     }
 
     function summaryCard(label, value, color) {
-        return `<div><div class="font-label-caps text-label-caps text-outline">${label}</div><div class="font-headline-lg text-headline-lg ${color}">${value}</div></div>`;
+        return `<div><div class="font-label-caps text-label-caps text-outline opacity-70">${label}</div><div class="font-headline-lg text-headline-lg ${color}">${value}</div></div>`;
     }
 
     function eventRows(events) {
